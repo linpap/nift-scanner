@@ -244,16 +244,17 @@ export default function Home() {
               {/* Auto Refresh */}
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Auto Refresh</label>
-                <button
-                  onClick={() => setAutoRefresh(!autoRefresh)}
-                  className={`w-full px-3 py-2 rounded border ${
-                    autoRefresh
-                      ? 'bg-emerald-900 border-emerald-600 text-emerald-400'
-                      : 'bg-gray-800 border-gray-700 text-gray-400'
-                  }`}
-                >
-                  {autoRefresh ? 'ON (5 min)' : 'OFF'}
-                </button>
+                <label className="flex items-center gap-3 cursor-pointer bg-gray-800 border border-gray-700 rounded px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                  />
+                  <span className={autoRefresh ? 'text-emerald-400' : 'text-gray-400'}>
+                    {autoRefresh ? 'ON (5 min)' : 'OFF'}
+                  </span>
+                </label>
               </div>
 
               {/* Run Scan Button */}
