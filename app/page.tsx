@@ -319,17 +319,16 @@ export default function Home() {
               {results.results.length > 0 ? (
                 <div className="bg-gray-900 rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-gray-800 text-left">
-                          <th className="px-4 py-3 text-sm font-semibold text-gray-400">#</th>
-                          <th className="px-4 py-3 text-sm font-semibold text-gray-400">Symbol</th>
-                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Price</th>
-                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Change</th>
-                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Volume</th>
-                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">RSI</th>
-                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Score</th>
-                          <th className="px-4 py-3 text-sm font-semibold text-gray-400">Signals</th>
+                          <th className="px-2 py-2 font-semibold text-gray-400">#</th>
+                          <th className="px-2 py-2 font-semibold text-gray-400">Symbol</th>
+                          <th className="px-2 py-2 font-semibold text-gray-400 text-right">Price</th>
+                          <th className="px-2 py-2 font-semibold text-gray-400 text-right">Chg%</th>
+                          <th className="px-2 py-2 font-semibold text-gray-400 text-right">Vol</th>
+                          <th className="px-2 py-2 font-semibold text-gray-400 text-right">RSI</th>
+                          <th className="px-2 py-2 font-semibold text-gray-400">Signals</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -338,8 +337,8 @@ export default function Home() {
                             key={stock.symbol}
                             className="border-t border-gray-800 hover:bg-gray-800/50 stock-card"
                           >
-                            <td className="px-4 py-3 text-gray-500">{index + 1}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-2 py-2 text-gray-500">{index + 1}</td>
+                            <td className="px-2 py-2">
                               <a
                                 href={`https://www.tradingview.com/chart/?symbol=NSE:${stock.symbol}`}
                                 target="_blank"
@@ -349,40 +348,30 @@ export default function Home() {
                                 {stock.symbol}
                               </a>
                             </td>
-                            <td className="px-4 py-3 text-right font-mono">
+                            <td className="px-2 py-2 text-right font-mono">
                               {stock.close.toFixed(2)}
                             </td>
-                            <td className={`px-4 py-3 text-right font-mono ${stock.changePercent >= 0 ? 'text-profit' : 'text-loss'}`}>
+                            <td className={`px-2 py-2 text-right font-mono ${stock.changePercent >= 0 ? 'text-profit' : 'text-loss'}`}>
                               {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-gray-400">
+                            <td className="px-2 py-2 text-right font-mono text-gray-400">
                               {formatVolume(stock.volume)}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono">
+                            <td className="px-2 py-2 text-right font-mono">
                               <span className={stock.rsi > 70 ? 'text-red-400' : stock.rsi < 30 ? 'text-emerald-400' : 'text-white'}>
-                                {stock.rsi.toFixed(1)}
+                                {stock.rsi.toFixed(0)}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              <span className="bg-emerald-900 text-emerald-400 px-2 py-1 rounded text-sm font-semibold">
-                                {stock.score}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
+                            <td className="px-2 py-2">
                               <div className="flex flex-wrap gap-1">
-                                {stock.reason.slice(0, 3).map((r, i) => (
+                                {stock.reason.map((r, i) => (
                                   <span
                                     key={i}
-                                    className="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-xs"
+                                    className="bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded text-[10px]"
                                   >
                                     {r}
                                   </span>
                                 ))}
-                                {stock.reason.length > 3 && (
-                                  <span className="text-gray-500 text-xs">
-                                    +{stock.reason.length - 3} more
-                                  </span>
-                                )}
                               </div>
                             </td>
                           </tr>
