@@ -61,6 +61,7 @@ export default function Home() {
   const [stockLimit, setStockLimit] = useState(30);
   const [lastScanTime, setLastScanTime] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [nextScanRefresh, setNextScanRefresh] = useState(0);
 
   // News state
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -131,14 +132,33 @@ export default function Home() {
 
   // Auto-refresh scanner every 5 minutes if enabled
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!autoRefresh) {
+      setNextScanRefresh(0);
+      return;
+    }
+
+    // Run scan immediately when auto-refresh is enabled
+    runScan();
+    setNextScanRefresh(300); // 5 minutes = 300 seconds
 
     const interval = setInterval(() => {
       runScan();
+      setNextScanRefresh(300);
     }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [autoRefresh, selectedScanner, stockLimit]);
+
+  // Countdown timer for next scan refresh
+  useEffect(() => {
+    if (nextScanRefresh <= 0 || !autoRefresh) return;
+
+    const timer = setInterval(() => {
+      setNextScanRefresh((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [nextScanRefresh, autoRefresh]);
 
   // Check if market is open (9:15 AM - 3:30 PM IST)
   const isMarketOpen = () => {
@@ -252,7 +272,9 @@ export default function Home() {
                     className="w-4 h-4 accent-emerald-500 cursor-pointer"
                   />
                   <span className={autoRefresh ? 'text-emerald-400' : 'text-gray-400'}>
-                    {autoRefresh ? 'ON (5 min)' : 'OFF'}
+                    {autoRefresh
+                      ? `Next: ${Math.floor(nextScanRefresh / 60)}:${(nextScanRefresh % 60).toString().padStart(2, '0')}`
+                      : 'OFF'}
                   </span>
                 </label>
               </div>
