@@ -46,7 +46,8 @@ interface NewsResponse {
 }
 
 const SCANNERS = [
-  { id: 'range_expansion', name: 'Range Expansion + Trend', description: 'From your Chartink screenshot' },
+  { id: 'range_expansion', name: 'Range Expansion + Trend', description: 'Range > 5/7 days + SMA trend' },
+  { id: 'range_expansion_v2', name: 'Range Expansion v2 (Chartink)', description: 'Exact Chartink: Range > ALL 7 days + SMA stack' },
   { id: 'ema_crossover', name: '5/20 EMA Crossover', description: 'Swing trading signals' },
   { id: 'breakout', name: '20-Day Breakout', description: 'Momentum breakouts' },
   { id: 'ema_8_21', name: 'EMA 8/21 + RSI', description: 'Short-term momentum' },

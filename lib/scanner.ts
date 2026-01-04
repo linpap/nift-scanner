@@ -263,10 +263,106 @@ export function ema8_21Scanner(ta: TechnicalAnalysis): ScanResult | null {
 }
 
 // ============================================
+// SCANNER 5: Range Expansion v2 (Exact Chartink Match)
+// From user's screenshot - stricter version with all 7 days
+// ============================================
+
+export function rangeExpansionV2Scanner(ta: TechnicalAnalysis): ScanResult | null {
+  const reasons: string[] = [];
+  let score = 0;
+
+  // Condition 1-7: Today's range > ALL previous 7 days' ranges
+  // (Daily High - Daily Low) > (N days ago High - N days ago Low) for N=1 to 7
+  const currentRange = ta.dailyRange;
+  const prevRanges = ta.previousDailyRanges;
+
+  // Must have at least 7 days of data
+  if (prevRanges.length < 7) {
+    return null;
+  }
+
+  // Check ALL 7 days - must expand beyond each one
+  let allDaysExpanded = true;
+  for (let i = 0; i < 7; i++) {
+    const prevRange = prevRanges[prevRanges.length - 1 - i];
+    if (currentRange <= prevRange) {
+      allDaysExpanded = false;
+      break;
+    }
+  }
+
+  if (!allDaysExpanded) {
+    return null;
+  }
+  reasons.push('Range > Last 7 days ranges');
+  score += 7;
+
+  // Condition: Daily Close > Daily Open (bullish candle)
+  if (ta.close <= ta.open) {
+    return null;
+  }
+  reasons.push('Bullish candle');
+  score += 1;
+
+  // Condition: Daily Close > 1 day ago Close
+  if (ta.close <= ta.previousClose) {
+    return null;
+  }
+  reasons.push('Close > Prev Close');
+  score += 1;
+
+  // Condition: Weekly Close > Weekly Open
+  if (ta.weeklyClose <= ta.weeklyOpen) {
+    return null;
+  }
+  reasons.push('Weekly bullish');
+  score += 1;
+
+  // Condition: Monthly Close > Monthly Open
+  if (ta.monthlyClose <= ta.monthlyOpen) {
+    return null;
+  }
+  reasons.push('Monthly bullish');
+  score += 1;
+
+  // Condition: 1 day ago Volume > 10000
+  if (ta.previousVolume < 10000) {
+    return null;
+  }
+  reasons.push(`Vol: ${(ta.volume / 1000).toFixed(0)}K`);
+  score += 1;
+
+  // Condition: SMA(close, 20) > SMA(close, 50)
+  if (ta.sma20 <= ta.sma50) {
+    return null;
+  }
+  reasons.push('SMA20 > SMA50');
+  score += 2;
+
+  // Condition: SMA(close, 50) > SMA(close, 200)
+  if (ta.sma50 <= ta.sma200) {
+    return null;
+  }
+  reasons.push('SMA50 > SMA200');
+  score += 2;
+
+  return {
+    symbol: ta.symbol,
+    close: ta.close,
+    change: ta.close - ta.previousClose,
+    changePercent: ((ta.close - ta.previousClose) / ta.previousClose) * 100,
+    volume: ta.volume,
+    rsi: ta.rsi14,
+    reason: reasons,
+    score,
+  };
+}
+
+// ============================================
 // Master Scanner - Run all scanners
 // ============================================
 
-export type ScannerType = 'range_expansion' | 'ema_crossover' | 'breakout' | 'ema_8_21' | 'all';
+export type ScannerType = 'range_expansion' | 'range_expansion_v2' | 'ema_crossover' | 'breakout' | 'ema_8_21' | 'all';
 
 export interface ScannerResults {
   scanner: string;
@@ -287,6 +383,10 @@ export function runScanner(
     case 'range_expansion':
       scannerFn = rangeExpansionScanner;
       scannerName = 'Range Expansion + Trend';
+      break;
+    case 'range_expansion_v2':
+      scannerFn = rangeExpansionV2Scanner;
+      scannerName = 'Range Expansion v2 (Chartink)';
       break;
     case 'ema_crossover':
       scannerFn = emaCrossoverScanner;
@@ -332,7 +432,7 @@ export function runAllScanners(
 ): Map<ScannerType, ScannerResults> {
   const allResults = new Map<ScannerType, ScannerResults>();
 
-  const scanners: ScannerType[] = ['range_expansion', 'ema_crossover', 'breakout', 'ema_8_21'];
+  const scanners: ScannerType[] = ['range_expansion', 'range_expansion_v2', 'ema_crossover', 'breakout', 'ema_8_21'];
 
   for (const scanner of scanners) {
     allResults.set(scanner, runScanner(scanner, technicalData));
