@@ -26,6 +26,23 @@ interface ScanResponse {
   };
 }
 
+interface NewsItem {
+  title: string;
+  link: string;
+  source: string;
+  pubDate: string;
+  timestamp: number;
+}
+
+interface NewsResponse {
+  success: boolean;
+  news: NewsItem[];
+  count: number;
+  lastUpdated: string;
+  cacheAge: number;
+  nextRefresh: number;
+}
+
 const SCANNERS = [
   { id: 'range_expansion', name: 'Range Expansion + Trend', description: 'From your Chartink screenshot' },
   { id: 'ema_crossover', name: '5/20 EMA Crossover', description: 'Swing trading signals' },
@@ -41,6 +58,12 @@ export default function Home() {
   const [stockLimit, setStockLimit] = useState(30);
   const [lastScanTime, setLastScanTime] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+
+  // News state
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsLastUpdated, setNewsLastUpdated] = useState<string | null>(null);
+  const [nextNewsRefresh, setNextNewsRefresh] = useState(0);
 
   const runScan = async () => {
     setLoading(true);
@@ -63,7 +86,47 @@ export default function Home() {
     }
   };
 
-  // Auto-refresh every 5 minutes if enabled
+  const fetchNews = async (refresh: boolean = false) => {
+    setNewsLoading(true);
+    try {
+      const response = await fetch(`/api/news?action=list&limit=15${refresh ? '&refresh=true' : ''}`);
+      const data: NewsResponse = await response.json();
+
+      if (data.success) {
+        setNews(data.news);
+        setNewsLastUpdated(data.lastUpdated);
+        setNextNewsRefresh(data.nextRefresh);
+      }
+    } catch (err) {
+      console.error('Failed to fetch news:', err);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
+  // Fetch news on mount and auto-refresh every 10 minutes
+  useEffect(() => {
+    fetchNews();
+
+    const interval = setInterval(() => {
+      fetchNews();
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Countdown timer for next refresh
+  useEffect(() => {
+    if (nextNewsRefresh <= 0) return;
+
+    const timer = setInterval(() => {
+      setNextNewsRefresh((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [nextNewsRefresh]);
+
+  // Auto-refresh scanner every 5 minutes if enabled
   useEffect(() => {
     if (!autoRefresh) return;
 
@@ -104,6 +167,18 @@ export default function Home() {
     });
   };
 
+  const formatNewsTime = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  };
+
   return (
     <main className="min-h-screen p-4 md:p-8">
       {/* Header */}
@@ -122,211 +197,279 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="bg-gray-900 rounded-lg p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Scanner Selection */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">Scanner</label>
-            <select
-              value={selectedScanner}
-              onChange={(e) => setSelectedScanner(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-            >
-              {SCANNERS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              {SCANNERS.find((s) => s.id === selectedScanner)?.description}
-            </p>
-          </div>
-
-          {/* Stock Limit */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">Stocks to Scan</label>
-            <select
-              value={stockLimit}
-              onChange={(e) => setStockLimit(Number(e.target.value))}
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-            >
-              <option value={20}>Top 20 F&O</option>
-              <option value={30}>Top 30 F&O</option>
-              <option value={50}>Top 50 F&O</option>
-              <option value={100}>Top 100 F&O</option>
-            </select>
-          </div>
-
-          {/* Auto Refresh */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">Auto Refresh</label>
-            <button
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`w-full px-3 py-2 rounded border ${
-                autoRefresh
-                  ? 'bg-emerald-900 border-emerald-600 text-emerald-400'
-                  : 'bg-gray-800 border-gray-700 text-gray-400'
-              }`}
-            >
-              {autoRefresh ? 'ON (5 min)' : 'OFF'}
-            </button>
-          </div>
-
-          {/* Run Scan Button */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">&nbsp;</label>
-            <button
-              onClick={runScan}
-              disabled={loading}
-              className={`w-full px-4 py-2 rounded font-semibold transition ${
-                loading
-                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-              }`}
-            >
-              {loading ? 'Scanning...' : 'Run Scan'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-900/50 border border-red-700 rounded-lg p-4 mb-6 text-red-400">
-          {error}
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent"></div>
-          <p className="mt-4 text-gray-400">Fetching data and running scanner...</p>
-          <p className="text-sm text-gray-500">This may take 30-60 seconds</p>
-        </div>
-      )}
-
-      {/* Results */}
-      {results && !loading && (
-        <div>
-          {/* Summary */}
+      {/* Main Grid - Scanner and News */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Scanner Section - Takes 2 columns */}
+        <div className="lg:col-span-2">
+          {/* Controls */}
           <div className="bg-gray-900 rounded-lg p-4 mb-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Scanner Selection */}
               <div>
-                <p className="text-2xl font-bold text-emerald-400">{results.matchCount}</p>
-                <p className="text-sm text-gray-400">Matches Found</p>
+                <label className="block text-sm text-gray-400 mb-2">Scanner</label>
+                <select
+                  value={selectedScanner}
+                  onChange={(e) => setSelectedScanner(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                >
+                  {SCANNERS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {SCANNERS.find((s) => s.id === selectedScanner)?.description}
+                </p>
               </div>
+
+              {/* Stock Limit */}
               <div>
-                <p className="text-2xl font-bold text-white">{results.totalScanned}</p>
-                <p className="text-sm text-gray-400">Stocks Scanned</p>
+                <label className="block text-sm text-gray-400 mb-2">Stocks to Scan</label>
+                <select
+                  value={stockLimit}
+                  onChange={(e) => setStockLimit(Number(e.target.value))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                >
+                  <option value={20}>Top 20 F&O</option>
+                  <option value={30}>Top 30 F&O</option>
+                  <option value={50}>Top 50 F&O</option>
+                  <option value={100}>Top 100 F&O</option>
+                </select>
               </div>
+
+              {/* Auto Refresh */}
               <div>
-                <p className="text-2xl font-bold text-white">{(results.meta.scanTime / 1000).toFixed(1)}s</p>
-                <p className="text-sm text-gray-400">Scan Time</p>
+                <label className="block text-sm text-gray-400 mb-2">Auto Refresh</label>
+                <button
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={`w-full px-3 py-2 rounded border ${
+                    autoRefresh
+                      ? 'bg-emerald-900 border-emerald-600 text-emerald-400'
+                      : 'bg-gray-800 border-gray-700 text-gray-400'
+                  }`}
+                >
+                  {autoRefresh ? 'ON (5 min)' : 'OFF'}
+                </button>
               </div>
+
+              {/* Run Scan Button */}
               <div>
-                <p className="text-2xl font-bold text-white">{results.scanner}</p>
-                <p className="text-sm text-gray-400">Scanner Used</p>
+                <label className="block text-sm text-gray-400 mb-2">&nbsp;</label>
+                <button
+                  onClick={runScan}
+                  disabled={loading}
+                  className={`w-full px-4 py-2 rounded font-semibold transition ${
+                    loading
+                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  }`}
+                >
+                  {loading ? 'Scanning...' : 'Run Scan'}
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Results Table */}
-          {results.results.length > 0 ? (
-            <div className="bg-gray-900 rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-800 text-left">
-                      <th className="px-4 py-3 text-sm font-semibold text-gray-400">#</th>
-                      <th className="px-4 py-3 text-sm font-semibold text-gray-400">Symbol</th>
-                      <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Price</th>
-                      <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Change</th>
-                      <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Volume</th>
-                      <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">RSI</th>
-                      <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Score</th>
-                      <th className="px-4 py-3 text-sm font-semibold text-gray-400">Signals</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.results.map((stock, index) => (
-                      <tr
-                        key={stock.symbol}
-                        className="border-t border-gray-800 hover:bg-gray-800/50 stock-card"
-                      >
-                        <td className="px-4 py-3 text-gray-500">{index + 1}</td>
-                        <td className="px-4 py-3">
-                          <a
-                            href={`https://www.tradingview.com/chart/?symbol=NSE:${stock.symbol}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-semibold text-emerald-400 hover:text-emerald-300"
-                          >
-                            {stock.symbol}
-                          </a>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono">
-                          {stock.close.toFixed(2)}
-                        </td>
-                        <td className={`px-4 py-3 text-right font-mono ${stock.changePercent >= 0 ? 'text-profit' : 'text-loss'}`}>
-                          {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-gray-400">
-                          {formatVolume(stock.volume)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono">
-                          <span className={stock.rsi > 70 ? 'text-red-400' : stock.rsi < 30 ? 'text-emerald-400' : 'text-white'}>
-                            {stock.rsi.toFixed(1)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="bg-emerald-900 text-emerald-400 px-2 py-1 rounded text-sm font-semibold">
-                            {stock.score}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {stock.reason.slice(0, 3).map((r, i) => (
-                              <span
-                                key={i}
-                                className="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-xs"
-                              >
-                                {r}
-                              </span>
-                            ))}
-                            {stock.reason.length > 3 && (
-                              <span className="text-gray-500 text-xs">
-                                +{stock.reason.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-900/50 border border-red-700 rounded-lg p-4 mb-6 text-red-400">
+              {error}
             </div>
-          ) : (
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent"></div>
+              <p className="mt-4 text-gray-400">Fetching data and running scanner...</p>
+              <p className="text-sm text-gray-500">This may take 30-60 seconds</p>
+            </div>
+          )}
+
+          {/* Results */}
+          {results && !loading && (
+            <div>
+              {/* Summary */}
+              <div className="bg-gray-900 rounded-lg p-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <p className="text-2xl font-bold text-emerald-400">{results.matchCount}</p>
+                    <p className="text-sm text-gray-400">Matches Found</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{results.totalScanned}</p>
+                    <p className="text-sm text-gray-400">Stocks Scanned</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{(results.meta.scanTime / 1000).toFixed(1)}s</p>
+                    <p className="text-sm text-gray-400">Scan Time</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-white truncate">{results.scanner}</p>
+                    <p className="text-sm text-gray-400">Scanner Used</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Results Table */}
+              {results.results.length > 0 ? (
+                <div className="bg-gray-900 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-800 text-left">
+                          <th className="px-4 py-3 text-sm font-semibold text-gray-400">#</th>
+                          <th className="px-4 py-3 text-sm font-semibold text-gray-400">Symbol</th>
+                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Price</th>
+                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Change</th>
+                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Volume</th>
+                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">RSI</th>
+                          <th className="px-4 py-3 text-sm font-semibold text-gray-400 text-right">Score</th>
+                          <th className="px-4 py-3 text-sm font-semibold text-gray-400">Signals</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.results.map((stock, index) => (
+                          <tr
+                            key={stock.symbol}
+                            className="border-t border-gray-800 hover:bg-gray-800/50 stock-card"
+                          >
+                            <td className="px-4 py-3 text-gray-500">{index + 1}</td>
+                            <td className="px-4 py-3">
+                              <a
+                                href={`https://www.tradingview.com/chart/?symbol=NSE:${stock.symbol}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-semibold text-emerald-400 hover:text-emerald-300"
+                              >
+                                {stock.symbol}
+                              </a>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono">
+                              {stock.close.toFixed(2)}
+                            </td>
+                            <td className={`px-4 py-3 text-right font-mono ${stock.changePercent >= 0 ? 'text-profit' : 'text-loss'}`}>
+                              {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-gray-400">
+                              {formatVolume(stock.volume)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono">
+                              <span className={stock.rsi > 70 ? 'text-red-400' : stock.rsi < 30 ? 'text-emerald-400' : 'text-white'}>
+                                {stock.rsi.toFixed(1)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="bg-emerald-900 text-emerald-400 px-2 py-1 rounded text-sm font-semibold">
+                                {stock.score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {stock.reason.slice(0, 3).map((r, i) => (
+                                  <span
+                                    key={i}
+                                    className="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-xs"
+                                  >
+                                    {r}
+                                  </span>
+                                ))}
+                                {stock.reason.length > 3 && (
+                                  <span className="text-gray-500 text-xs">
+                                    +{stock.reason.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-900 rounded-lg p-12 text-center">
+                  <p className="text-gray-400 text-lg">No stocks match the scanner criteria</p>
+                  <p className="text-gray-500 text-sm mt-2">Try a different scanner or wait for market conditions to change</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Initial State */}
+          {!results && !loading && !error && (
             <div className="bg-gray-900 rounded-lg p-12 text-center">
-              <p className="text-gray-400 text-lg">No stocks match the scanner criteria</p>
-              <p className="text-gray-500 text-sm mt-2">Try a different scanner or wait for market conditions to change</p>
+              <p className="text-gray-400 text-lg mb-4">Click &quot;Run Scan&quot; to start scanning stocks</p>
+              <p className="text-gray-500 text-sm">
+                The scanner will fetch real-time data from Yahoo Finance and analyze {stockLimit} F&O stocks
+              </p>
             </div>
           )}
         </div>
-      )}
 
-      {/* Initial State */}
-      {!results && !loading && !error && (
-        <div className="bg-gray-900 rounded-lg p-12 text-center">
-          <p className="text-gray-400 text-lg mb-4">Click &quot;Run Scan&quot; to start scanning stocks</p>
-          <p className="text-gray-500 text-sm">
-            The scanner will fetch real-time data from Yahoo Finance and analyze {stockLimit} F&O stocks
-          </p>
+        {/* News Section - Takes 1 column */}
+        <div className="lg:col-span-1">
+          <div className="bg-gray-900 rounded-lg p-4 sticky top-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <span>Breaking News</span>
+                {newsLoading && (
+                  <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></span>
+                )}
+              </h2>
+              <button
+                onClick={() => fetchNews(true)}
+                disabled={newsLoading}
+                className="text-xs text-emerald-400 hover:text-emerald-300 disabled:text-gray-500"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {/* Next refresh countdown */}
+            {nextNewsRefresh > 0 && (
+              <p className="text-xs text-gray-500 mb-3">
+                Next auto-refresh in {Math.floor(nextNewsRefresh / 60)}:{(nextNewsRefresh % 60).toString().padStart(2, '0')}
+              </p>
+            )}
+
+            {/* News List */}
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {news.length > 0 ? (
+                news.map((item, index) => (
+                  <a
+                    key={index}
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
+                  >
+                    <p className="text-sm text-gray-200 leading-tight mb-2 line-clamp-2">
+                      {item.title}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{item.source}</span>
+                      <span>{formatNewsTime(item.timestamp)}</span>
+                    </div>
+                  </a>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {newsLoading ? 'Loading news...' : 'No news available'}
+                </div>
+              )}
+            </div>
+
+            {/* News footer */}
+            {news.length > 0 && (
+              <p className="text-xs text-gray-600 mt-3 text-center">
+                Sources: Google News, Economic Times, Moneycontrol
+              </p>
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Footer */}
       <footer className="mt-12 text-center text-gray-600 text-sm">
