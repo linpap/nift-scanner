@@ -88,6 +88,37 @@ export default function Home() {
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsLastUpdated, setNewsLastUpdated] = useState<string | null>(null);
   const [nextNewsRefresh, setNextNewsRefresh] = useState(0);
+  const [lastSeenNewsCount, setLastSeenNewsCount] = useState(0);
+  const [newsAlertEnabled, setNewsAlertEnabled] = useState(true);
+  const [shakeNews, setShakeNews] = useState(false);
+
+  // Play notification sound
+  const playNotificationSound = () => {
+    try {
+      // Create audio context for a simple beep
+      const audioContext = new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 800; // Hz
+      oscillator.type = 'sine';
+      gainNode.gain.value = 0.3;
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.2); // 200ms beep
+    } catch (e) {
+      console.log('Audio not supported');
+    }
+  };
+
+  // Trigger shake animation
+  const triggerShake = () => {
+    setShakeNews(true);
+    setTimeout(() => setShakeNews(false), 500);
+  };
 
   const runScan = async () => {
     setLoading(true);
@@ -117,7 +148,27 @@ export default function Home() {
       const data: NewsResponse = await response.json();
 
       if (data.success) {
+        // Check for new bullish news
+        if (newsAlertEnabled && lastSeenNewsCount > 0) {
+          const newBullishNews = data.news.filter(
+            (item, index) => index < (data.news.length - lastSeenNewsCount) && item.sentiment === 'bullish'
+          );
+
+          if (newBullishNews.length > 0) {
+            playNotificationSound();
+            triggerShake();
+            // Show browser notification if permitted
+            if (Notification.permission === 'granted') {
+              new Notification('Bullish News Alert!', {
+                body: newBullishNews[0].title,
+                icon: '/favicon.ico'
+              });
+            }
+          }
+        }
+
         setNews(data.news);
+        setLastSeenNewsCount(data.news.length);
         setNewsLastUpdated(data.lastUpdated);
         setNextNewsRefresh(data.nextRefresh);
       }
@@ -127,6 +178,13 @@ export default function Home() {
       setNewsLoading(false);
     }
   };
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   // Fetch news on mount and auto-refresh every 10 minutes
   useEffect(() => {
@@ -466,7 +524,7 @@ export default function Home() {
 
         {/* News Section - Takes 1 column */}
         <div className="lg:col-span-1">
-          <div className="bg-gray-900 rounded-lg p-4 sticky top-4">
+          <div className={`bg-gray-900 rounded-lg p-4 sticky top-4 ${shakeNews ? 'shake' : ''}`}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <span>Breaking News</span>
@@ -474,13 +532,25 @@ export default function Home() {
                   <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></span>
                 )}
               </h2>
-              <button
-                onClick={() => fetchNews(true)}
-                disabled={newsLoading}
-                className="text-xs text-emerald-400 hover:text-emerald-300 disabled:text-gray-500"
-              >
-                Refresh
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Sound Alert Toggle */}
+                <label className="flex items-center gap-1 cursor-pointer" title="Sound alert for bullish news">
+                  <input
+                    type="checkbox"
+                    checked={newsAlertEnabled}
+                    onChange={(e) => setNewsAlertEnabled(e.target.checked)}
+                    className="w-3 h-3 accent-emerald-500 cursor-pointer"
+                  />
+                  <span className="text-[10px] text-gray-400">Sound</span>
+                </label>
+                <button
+                  onClick={() => fetchNews(true)}
+                  disabled={newsLoading}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 disabled:text-gray-500"
+                >
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {/* Next refresh countdown */}
