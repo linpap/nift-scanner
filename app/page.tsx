@@ -48,15 +48,20 @@ interface NewsResponse {
 }
 
 const SCANNERS = [
-  { id: 'range_expansion', name: 'Range Expansion + Trend', description: 'Range > 5/7 days + SMA trend' },
-  { id: 'range_expansion_v2', name: 'Range Expansion v2 (Chartink)', description: 'Exact Chartink: Range > ALL 7 days + SMA stack' },
-  { id: 'ema_crossover', name: '5/20 EMA Crossover', description: 'Swing trading signals' },
-  { id: 'breakout', name: '20-Day Breakout', description: 'Momentum breakouts' },
-  { id: 'ema_8_21', name: 'EMA 8/21 + RSI', description: 'Short-term momentum' },
+  // Intraday Scanners (for 9:30 AM)
+  { id: 'gap_up', name: 'Gap-Up Momentum', description: 'INTRADAY: 1-5% gap up + volume spike' },
+  { id: 'gap_down_reversal', name: 'Gap-Down Reversal', description: 'INTRADAY: Gap down recovering' },
+  { id: 'intraday_momentum', name: 'Intraday Momentum', description: 'INTRADAY: High volume + near HOD' },
+  // Swing Scanners
+  { id: 'range_expansion', name: 'Range Expansion + Trend', description: 'SWING: Range > 5/7 days + SMA trend' },
+  { id: 'range_expansion_v2', name: 'Range Expansion v2 (Chartink)', description: 'SWING: Range > ALL 7 days + SMA stack' },
+  { id: 'ema_crossover', name: '5/20 EMA Crossover', description: 'SWING: EMA crossover signals' },
+  { id: 'breakout', name: '20-Day Breakout', description: 'SWING: Momentum breakouts' },
+  { id: 'ema_8_21', name: 'EMA 8/21 + RSI', description: 'SWING: Short-term momentum' },
 ];
 
 export default function Home() {
-  const [selectedScanner, setSelectedScanner] = useState('range_expansion');
+  const [selectedScanner, setSelectedScanner] = useState('gap_up');
   const [results, setResults] = useState<ScanResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
