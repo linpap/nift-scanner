@@ -10,6 +10,8 @@ export interface ScanResult {
   change: number;
   changePercent: number;
   volume: number;
+  avgVolume: number;
+  volumeRatio: number; // e.g., 1.5 = 50% above average
   rsi: number;
   reason: string[];
   score: number; // Higher = more conditions met
@@ -99,6 +101,8 @@ export function rangeExpansionScanner(ta: TechnicalAnalysis): ScanResult | null 
     change: ta.close - ta.previousClose,
     changePercent: ((ta.close - ta.previousClose) / ta.previousClose) * 100,
     volume: ta.volume,
+    avgVolume: ta.avgVolume20,
+    volumeRatio: ta.volumeRatio,
     rsi: ta.rsi14,
     reason: reasons,
     score,
@@ -153,6 +157,8 @@ export function emaCrossoverScanner(ta: TechnicalAnalysis): ScanResult | null {
     change: ta.close - ta.previousClose,
     changePercent: ((ta.close - ta.previousClose) / ta.previousClose) * 100,
     volume: ta.volume,
+    avgVolume: ta.avgVolume20,
+    volumeRatio: ta.volumeRatio,
     rsi: ta.rsi14,
     reason: reasons,
     score,
@@ -208,6 +214,8 @@ export function breakoutScanner(ta: TechnicalAnalysis): ScanResult | null {
     change: ta.close - ta.previousClose,
     changePercent: ((ta.close - ta.previousClose) / ta.previousClose) * 100,
     volume: ta.volume,
+    avgVolume: ta.avgVolume20,
+    volumeRatio: ta.volumeRatio,
     rsi: ta.rsi14,
     reason: reasons,
     score,
@@ -256,6 +264,8 @@ export function ema8_21Scanner(ta: TechnicalAnalysis): ScanResult | null {
     change: ta.close - ta.previousClose,
     changePercent: ((ta.close - ta.previousClose) / ta.previousClose) * 100,
     volume: ta.volume,
+    avgVolume: ta.avgVolume20,
+    volumeRatio: ta.volumeRatio,
     rsi: ta.rsi21,
     reason: reasons,
     score,
@@ -352,6 +362,8 @@ export function rangeExpansionV2Scanner(ta: TechnicalAnalysis): ScanResult | nul
     change: ta.close - ta.previousClose,
     changePercent: ((ta.close - ta.previousClose) / ta.previousClose) * 100,
     volume: ta.volume,
+    avgVolume: ta.avgVolume20,
+    volumeRatio: ta.volumeRatio,
     rsi: ta.rsi14,
     reason: reasons,
     score,

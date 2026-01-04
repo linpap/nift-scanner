@@ -8,6 +8,8 @@ interface ScanResult {
   change: number;
   changePercent: number;
   volume: number;
+  avgVolume: number;
+  volumeRatio: number;
   rsi: number;
   reason: string[];
   score: number;
@@ -62,6 +64,19 @@ export default function Home() {
   const [lastScanTime, setLastScanTime] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [nextScanRefresh, setNextScanRefresh] = useState(0);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (symbol: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(symbol)) {
+        newSet.delete(symbol);
+      } else {
+        newSet.add(symbol);
+      }
+      return newSet;
+    });
+  };
 
   // News state
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -349,7 +364,7 @@ export default function Home() {
                           <th className="px-2 py-2 font-semibold text-gray-400">Symbol</th>
                           <th className="px-2 py-2 font-semibold text-gray-400 text-right">Price</th>
                           <th className="px-2 py-2 font-semibold text-gray-400 text-right">Chg%</th>
-                          <th className="px-2 py-2 font-semibold text-gray-400 text-right">Vol</th>
+                          <th className="px-2 py-2 font-semibold text-gray-400 text-right" title="Volume vs 20-day Avg">Vol/Avg</th>
                           <th className="px-2 py-2 font-semibold text-gray-400 text-right">RSI</th>
                           <th className="px-2 py-2 font-semibold text-gray-400">Signals</th>
                         </tr>
@@ -377,8 +392,10 @@ export default function Home() {
                             <td className={`px-2 py-2 text-right font-mono ${stock.changePercent >= 0 ? 'text-profit' : 'text-loss'}`}>
                               {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
                             </td>
-                            <td className="px-2 py-2 text-right font-mono text-gray-400">
-                              {formatVolume(stock.volume)}
+                            <td className="px-2 py-2 text-right font-mono" title={`Vol: ${formatVolume(stock.volume)} | Avg: ${formatVolume(stock.avgVolume)}`}>
+                              <span className={stock.volumeRatio >= 1.5 ? 'text-emerald-400' : stock.volumeRatio >= 1 ? 'text-white' : 'text-gray-500'}>
+                                {stock.volumeRatio.toFixed(1)}x
+                              </span>
                             </td>
                             <td className="px-2 py-2 text-right font-mono">
                               <span className={stock.rsi > 70 ? 'text-red-400' : stock.rsi < 30 ? 'text-emerald-400' : 'text-white'}>
@@ -386,11 +403,30 @@ export default function Home() {
                               </span>
                             </td>
                             <td className="px-2 py-2">
-                              <div className="flex flex-wrap gap-1">
-                                {stock.reason.map((r, i) => (
+                              <div className="flex items-center gap-1">
+                                {/* Show first 2 signals always */}
+                                {stock.reason.slice(0, 2).map((r, i) => (
                                   <span
                                     key={i}
-                                    className="bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded text-[10px]"
+                                    className="bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap"
+                                  >
+                                    {r}
+                                  </span>
+                                ))}
+                                {/* Show expand button if more than 2 signals */}
+                                {stock.reason.length > 2 && (
+                                  <button
+                                    onClick={() => toggleExpand(stock.symbol)}
+                                    className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap"
+                                  >
+                                    {expandedRows.has(stock.symbol) ? '−' : `+${stock.reason.length - 2}`}
+                                  </button>
+                                )}
+                                {/* Show remaining signals when expanded */}
+                                {expandedRows.has(stock.symbol) && stock.reason.slice(2).map((r, i) => (
+                                  <span
+                                    key={i + 2}
+                                    className="bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap"
                                   >
                                     {r}
                                   </span>

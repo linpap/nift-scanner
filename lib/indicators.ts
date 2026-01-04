@@ -168,6 +168,8 @@ export interface TechnicalAnalysis {
   volume: number;
   previousClose: number;
   previousVolume: number;
+  avgVolume20: number;  // 20-day average volume
+  volumeRatio: number;  // Today's volume / Avg volume (e.g., 1.5 = 50% above avg)
   ema5: number;
   ema8: number;
   ema20: number;
@@ -224,6 +226,10 @@ export function calculateTechnicalAnalysis(
   // Approximate monthly (last 22 trading days)
   const monthStart = candles.length >= 22 ? candles[candles.length - 22] : candles[0];
 
+  // Calculate volume metrics
+  const avgVol20 = getValue(volumeSma20);
+  const volRatio = avgVol20 > 0 ? latest.volume / avgVol20 : 1;
+
   return {
     symbol,
     close: latest.close,
@@ -233,6 +239,8 @@ export function calculateTechnicalAnalysis(
     volume: latest.volume,
     previousClose: previous.close,
     previousVolume: previous.volume,
+    avgVolume20: avgVol20,
+    volumeRatio: volRatio,
     ema5: getValue(ema5),
     ema8: getValue(ema8),
     ema20: getValue(ema20),
