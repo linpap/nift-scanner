@@ -32,6 +32,8 @@ interface NewsItem {
   source: string;
   pubDate: string;
   timestamp: number;
+  sentiment: 'bullish' | 'bearish' | 'neutral';
+  sentimentScore: number;
 }
 
 interface NewsResponse {
@@ -445,12 +447,22 @@ export default function Home() {
                     rel="noopener noreferrer"
                     className="block p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
                   >
-                    <p className="text-sm text-gray-200 leading-tight mb-2 line-clamp-2">
-                      {item.title}
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>{item.source}</span>
-                      <span>{formatNewsTime(item.timestamp)}</span>
+                    <div className="flex items-start gap-2">
+                      {/* Sentiment Icon */}
+                      <span className="text-lg flex-shrink-0 mt-0.5" title={`${item.sentiment} (${(item.sentimentScore * 100).toFixed(0)}%)`}>
+                        {item.sentiment === 'bullish' && '👍'}
+                        {item.sentiment === 'bearish' && '👎'}
+                        {item.sentiment === 'neutral' && '➖'}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-200 leading-tight mb-2 line-clamp-2">
+                          {item.title}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{item.source}</span>
+                          <span>{formatNewsTime(item.timestamp)}</span>
+                        </div>
+                      </div>
                     </div>
                   </a>
                 ))

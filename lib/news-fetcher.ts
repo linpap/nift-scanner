@@ -2,6 +2,8 @@
 // Primary: Google News RSS (no API key, no rate limits)
 // Fallback: Economic Times RSS
 
+export type SentimentType = 'bullish' | 'bearish' | 'neutral';
+
 export interface NewsItem {
   title: string;
   link: string;
@@ -9,11 +11,94 @@ export interface NewsItem {
   pubDate: string;
   timestamp: number;
   category?: string;
+  sentiment: SentimentType;
+  sentimentScore: number; // -1 to 1
 }
+
+// Sentiment analysis keywords for Indian stock market
+const BULLISH_KEYWORDS = [
+  // Strong bullish
+  'surge', 'surges', 'surging', 'soar', 'soars', 'soaring', 'rally', 'rallies', 'rallying',
+  'jump', 'jumps', 'jumping', 'gain', 'gains', 'gaining', 'rise', 'rises', 'rising',
+  'up', 'higher', 'high', 'record high', 'all-time high', 'ath', 'breakout',
+  'bull', 'bullish', 'boom', 'booming', 'strong', 'strength', 'outperform',
+  // Positive actions
+  'buy', 'buying', 'upgrade', 'upgraded', 'accumulate', 'recommend', 'target raised',
+  'positive', 'optimistic', 'confidence', 'recovery', 'rebound', 'bounce',
+  // FII/DII positive
+  'fii buying', 'fii inflow', 'dii buying', 'inflow', 'inflows',
+  // Corporate positive
+  'profit', 'profits', 'earnings beat', 'revenue growth', 'dividend', 'bonus',
+  'expansion', 'deal', 'contract', 'order', 'orders', 'launch', 'launched',
+  'acquisition', 'merger', 'buyback', 'stock split',
+  // Market positive
+  'green', 'upside', 'momentum', 'breakout', 'support',
+];
+
+const BEARISH_KEYWORDS = [
+  // Strong bearish
+  'crash', 'crashes', 'crashing', 'plunge', 'plunges', 'plunging', 'tumble', 'tumbles',
+  'fall', 'falls', 'falling', 'drop', 'drops', 'dropping', 'decline', 'declines', 'declining',
+  'down', 'lower', 'low', 'record low', 'breakdown', 'collapse',
+  'bear', 'bearish', 'weak', 'weakness', 'underperform', 'slump', 'slumps',
+  // Negative actions
+  'sell', 'selling', 'selloff', 'sell-off', 'downgrade', 'downgraded', 'avoid',
+  'negative', 'pessimistic', 'fear', 'panic', 'concern', 'worried', 'warning',
+  // FII/DII negative
+  'fii selling', 'fii outflow', 'outflow', 'outflows', 'exit', 'exits',
+  // Corporate negative
+  'loss', 'losses', 'earnings miss', 'revenue decline', 'debt', 'default',
+  'fraud', 'scam', 'investigation', 'penalty', 'fine', 'lawsuit',
+  'layoff', 'layoffs', 'shutdown', 'closure',
+  // Market negative
+  'red', 'downside', 'resistance', 'correction', 'volatile', 'volatility',
+  'inflation', 'rate hike', 'recession', 'crisis',
+];
 
 export interface NewsCache {
   items: NewsItem[];
   lastUpdated: number;
+}
+
+// Analyze sentiment of a news headline
+function analyzeSentiment(title: string): { sentiment: SentimentType; score: number } {
+  const lowerTitle = title.toLowerCase();
+
+  let bullishScore = 0;
+  let bearishScore = 0;
+
+  // Check for bullish keywords
+  for (const keyword of BULLISH_KEYWORDS) {
+    if (lowerTitle.includes(keyword)) {
+      // Give more weight to multi-word phrases
+      bullishScore += keyword.includes(' ') ? 2 : 1;
+    }
+  }
+
+  // Check for bearish keywords
+  for (const keyword of BEARISH_KEYWORDS) {
+    if (lowerTitle.includes(keyword)) {
+      bearishScore += keyword.includes(' ') ? 2 : 1;
+    }
+  }
+
+  // Calculate net score (-1 to 1)
+  const totalScore = bullishScore + bearishScore;
+  let normalizedScore = 0;
+
+  if (totalScore > 0) {
+    normalizedScore = (bullishScore - bearishScore) / totalScore;
+  }
+
+  // Determine sentiment
+  let sentiment: SentimentType = 'neutral';
+  if (normalizedScore > 0.2) {
+    sentiment = 'bullish';
+  } else if (normalizedScore < -0.2) {
+    sentiment = 'bearish';
+  }
+
+  return { sentiment, score: normalizedScore };
 }
 
 // In-memory cache (10 minute TTL)
@@ -58,12 +143,15 @@ function parseRSSItems(xml: string, source: string): NewsItem[] {
       const isMarketRelated = /stock|market|nifty|sensex|share|trading|invest|rbi|sebi|ipo|fii|dii|rupee|economy|bank|reliance|tata|infosys|hdfc/i.test(title);
 
       if (isMarketRelated || source === 'Economic Times') {
+        const { sentiment, score } = analyzeSentiment(title);
         items.push({
           title,
           link,
           source,
           pubDate,
           timestamp: new Date(pubDate).getTime() || Date.now(),
+          sentiment,
+          sentimentScore: score,
         });
       }
     }
