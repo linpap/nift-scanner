@@ -124,10 +124,10 @@ export async function fetchHistoricalData(
 ): Promise<HistoricalData[]> {
   try {
     const yahooSymbol = `${symbol}.NS`;
-    const endDate = Math.floor(Date.now() / 1000);
-    const startDate = endDate - (days * 24 * 60 * 60);
+    // Use range parameter instead of period1/period2 for better compatibility
+    const range = days > 365 ? '2y' : '1y';
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?period1=${startDate}&period2=${endDate}&interval=1d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?range=${range}&interval=1d`;
 
     const response = await fetch(url, {
       headers: {
