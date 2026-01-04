@@ -7,6 +7,12 @@ import { FO_STOCKS } from '@/lib/fo-stocks';
 import { fetchHistoricalData } from '@/lib/data-fetcher';
 import { calculateTechnicalAnalysis, TechnicalAnalysis } from '@/lib/indicators';
 import { runAllScanners, ScannerResults, ScannerType } from '@/lib/scanner';
+import {
+  sendTelegramMessage,
+  sendWhatsAppMessage,
+  formatScanResultsForNotification,
+  formatScanResultsForWhatsApp,
+} from '@/lib/notifications';
 
 // Store latest results in memory (for demo - use Redis/DB in production)
 let latestResults: {
@@ -83,6 +89,56 @@ export async function GET(request: NextRequest) {
   console.log(`[CRON] Scan complete in ${scanTime}ms`);
   console.log(`[CRON] Analyzed ${technicalData.length} stocks`);
 
+  // Send notifications if configured
+  const notificationResults: Record<string, unknown> = {};
+
+  // Send Telegram notification
+  const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+  const telegramChatId = process.env.TELEGRAM_CHAT_ID;
+
+  if (telegramBotToken && telegramChatId) {
+    // Send notification for the scanner with most results
+    const bestScanner = Object.entries(resultsObj)
+      .sort((a, b) => b[1].matchCount - a[1].matchCount)[0];
+
+    if (bestScanner && bestScanner[1].matchCount > 0) {
+      const message = formatScanResultsForNotification(
+        bestScanner[1].scanner,
+        bestScanner[1].results
+      );
+      const telegramResult = await sendTelegramMessage(
+        telegramBotToken,
+        telegramChatId,
+        message
+      );
+      notificationResults.telegram = telegramResult;
+      console.log(`[CRON] Telegram notification: ${telegramResult.success}`);
+    }
+  }
+
+  // Send WhatsApp notification
+  const whatsappPhone = process.env.WHATSAPP_PHONE;
+  const whatsappApiKey = process.env.WHATSAPP_API_KEY;
+
+  if (whatsappPhone && whatsappApiKey) {
+    const bestScanner = Object.entries(resultsObj)
+      .sort((a, b) => b[1].matchCount - a[1].matchCount)[0];
+
+    if (bestScanner && bestScanner[1].matchCount > 0) {
+      const message = formatScanResultsForWhatsApp(
+        bestScanner[1].scanner,
+        bestScanner[1].results
+      );
+      const whatsappResult = await sendWhatsAppMessage(
+        whatsappPhone,
+        whatsappApiKey,
+        message
+      );
+      notificationResults.whatsapp = whatsappResult;
+      console.log(`[CRON] WhatsApp notification: ${whatsappResult.success}`);
+    }
+  }
+
   // Log summary
   Object.entries(resultsObj).forEach(([scanner, result]) => {
     console.log(`[CRON] ${scanner}: ${result.matchCount} matches`);
@@ -102,6 +158,7 @@ export async function GET(request: NextRequest) {
       scanner,
       matches: result.matchCount,
     })),
+    notifications: notificationResults,
   });
 }
 
