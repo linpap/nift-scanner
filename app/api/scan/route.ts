@@ -81,6 +81,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Debug: Log sample of technical data
+  if (technicalData.length > 0) {
+    const sample = technicalData[0];
+    console.log(`[DEBUG] Sample ${sample.symbol}: close=${sample.close}, prevClose=${sample.previousClose}, ` +
+      `change=${((sample.close - sample.previousClose) / sample.previousClose * 100).toFixed(2)}%, ` +
+      `RSI=${sample.rsi14?.toFixed(1)}, EMA5=${sample.ema5?.toFixed(2)}, EMA20=${sample.ema20?.toFixed(2)}, ` +
+      `macdCrossover=${sample.macdCrossover}`);
+  }
+
   // Run the scanner
   let scannerResults: ScannerResults | Map<ScannerType, ScannerResults>;
 

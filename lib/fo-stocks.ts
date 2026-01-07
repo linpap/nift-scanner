@@ -20,7 +20,7 @@ export const FO_STOCKS = [
   'MARUTI',
   'TITAN',
   'SUNPHARMA',
-  'TATAMOTORS',
+  'TMPV', // Tata Motors Passenger Vehicles (renamed Oct 2025)
   'ULTRACEMCO',
   'NTPC',
   'WIPRO',

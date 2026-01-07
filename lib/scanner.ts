@@ -382,26 +382,34 @@ export function gapUpScanner(ta: TechnicalAnalysis): ScanResult | null {
   // Calculate gap percentage (Open vs Previous Close)
   const gapPercent = ((ta.open - ta.previousClose) / ta.previousClose) * 100;
 
-  // Condition: Gap up at least 1% (but not more than 5% to avoid crazy gaps)
-  if (gapPercent < 1 || gapPercent > 5) {
+  // Condition: Gap up at least 0.5% (but not more than 7% to avoid crazy gaps)
+  if (gapPercent < 0.5 || gapPercent > 7) {
     return null;
   }
   reasons.push(`Gap +${gapPercent.toFixed(1)}%`);
   score += Math.round(gapPercent * 2);
 
-  // Condition: Currently trading above open (gap holding)
-  if (ta.close < ta.open) {
-    return null;
+  // Condition: Currently trading above open (gap holding) OR close to open
+  const closeVsOpen = ((ta.close - ta.open) / ta.open) * 100;
+  if (closeVsOpen < -0.5) {
+    return null; // Allow small pullback from open
   }
-  reasons.push('Gap holding');
-  score += 2;
+  if (ta.close >= ta.open) {
+    reasons.push('Gap holding');
+    score += 2;
+  } else {
+    reasons.push('Near open');
+    score += 1;
+  }
 
-  // Condition: Volume > 1.2x average (interest in the stock)
-  if (ta.volumeRatio < 1.2) {
+  // Condition: Volume > 0.8x average (reasonable volume)
+  if (ta.volumeRatio < 0.8) {
     return null;
   }
-  reasons.push(`Vol ${ta.volumeRatio.toFixed(1)}x avg`);
-  score += Math.round(ta.volumeRatio);
+  if (ta.volumeRatio >= 1.2) {
+    reasons.push(`Vol ${ta.volumeRatio.toFixed(1)}x avg`);
+    score += Math.round(ta.volumeRatio);
+  }
 
   // Condition: RSI not overbought (< 75)
   if (ta.rsi14 > 75) {
@@ -505,20 +513,22 @@ export function intradayMomentumScanner(ta: TechnicalAnalysis): ScanResult | nul
   const reasons: string[] = [];
   let score = 0;
 
-  // Condition: Positive change today
+  // Condition: Positive change today (at least 0.3%)
   const changePercent = ((ta.close - ta.previousClose) / ta.previousClose) * 100;
-  if (changePercent < 0.5) {
+  if (changePercent < 0.3) {
     return null;
   }
   reasons.push(`+${changePercent.toFixed(1)}%`);
   score += Math.round(changePercent * 2);
 
-  // Condition: High volume (> 1.5x average)
-  if (ta.volumeRatio < 1.5) {
+  // Condition: Reasonable volume (> 0.8x average)
+  if (ta.volumeRatio < 0.8) {
     return null;
   }
-  reasons.push(`Vol ${ta.volumeRatio.toFixed(1)}x`);
-  score += Math.round(ta.volumeRatio * 2);
+  if (ta.volumeRatio >= 1.2) {
+    reasons.push(`Vol ${ta.volumeRatio.toFixed(1)}x`);
+    score += Math.round(ta.volumeRatio * 2);
+  }
 
   // Condition: Bullish candle (close > open)
   if (ta.close <= ta.open) {
@@ -527,27 +537,26 @@ export function intradayMomentumScanner(ta: TechnicalAnalysis): ScanResult | nul
   reasons.push('Bullish');
   score += 1;
 
-  // Condition: Close near high of day (within 1% of high)
+  // Condition: Close near high of day (within 2% of high)
   const nearHigh = (ta.high - ta.close) / ta.close * 100;
-  if (nearHigh > 1) {
+  if (nearHigh > 2) {
     return null;
   }
   reasons.push('Near HOD');
   score += 2;
 
-  // Condition: RSI between 50-70 (momentum but not overbought)
-  if (ta.rsi14 < 50 || ta.rsi14 > 70) {
+  // Condition: RSI between 45-75 (momentum, slightly relaxed)
+  if (ta.rsi14 < 45 || ta.rsi14 > 75) {
     return null;
   }
   reasons.push(`RSI ${ta.rsi14.toFixed(0)}`);
   score += 1;
 
-  // Condition: EMA 8 > EMA 21 (short-term uptrend)
-  if (ta.ema8 <= ta.ema21) {
-    return null;
+  // Condition: EMA 8 > EMA 21 (short-term uptrend) - optional, add score if true
+  if (ta.ema8 > ta.ema21) {
+    reasons.push('EMA8>21');
+    score += 2;
   }
-  reasons.push('EMA8>21');
-  score += 2;
 
   // Condition: Price > 100
   if (ta.close < 100) {
@@ -569,10 +578,133 @@ export function intradayMomentumScanner(ta: TechnicalAnalysis): ScanResult | nul
 }
 
 // ============================================
+// SCANNER 9: MACD Bullish Crossover
+// MACD (12,26,9) crossing above Signal line
+// ============================================
+
+export function macdBullishScanner(ta: TechnicalAnalysis): ScanResult | null {
+  const reasons: string[] = [];
+  let score = 0;
+
+  // Condition: MACD bullish crossover just happened
+  if (ta.macdCrossover !== 'bullish') {
+    return null;
+  }
+  reasons.push('MACD Bullish Cross');
+  score += 5;
+
+  // Condition: MACD histogram is positive (momentum building)
+  if (ta.macdHistogram <= 0) {
+    return null;
+  }
+  reasons.push(`Hist: +${ta.macdHistogram.toFixed(2)}`);
+  score += 1;
+
+  // Condition: Price above 20 SMA (uptrend)
+  if (ta.close < ta.sma20) {
+    return null;
+  }
+  reasons.push('Above SMA20');
+  score += 1;
+
+  // Condition: RSI between 40-70 (room to grow)
+  if (ta.rsi14 < 40 || ta.rsi14 > 70) {
+    return null;
+  }
+  reasons.push(`RSI ${ta.rsi14.toFixed(0)}`);
+  score += 1;
+
+  // Condition: Volume above average
+  if (ta.volumeRatio < 0.8) {
+    return null;
+  }
+  if (ta.volumeRatio >= 1.2) {
+    reasons.push(`Vol ${ta.volumeRatio.toFixed(1)}x`);
+    score += 1;
+  }
+
+  // Condition: Price > 100
+  if (ta.close < 100) {
+    return null;
+  }
+
+  return {
+    symbol: ta.symbol,
+    close: ta.close,
+    change: ta.close - ta.previousClose,
+    changePercent: ((ta.close - ta.previousClose) / ta.previousClose) * 100,
+    volume: ta.volume,
+    avgVolume: ta.avgVolume20,
+    volumeRatio: ta.volumeRatio,
+    rsi: ta.rsi14,
+    reason: reasons,
+    score,
+  };
+}
+
+// ============================================
+// SCANNER 10: MACD Bearish Crossover
+// MACD (12,26,9) crossing below Signal line
+// ============================================
+
+export function macdBearishScanner(ta: TechnicalAnalysis): ScanResult | null {
+  const reasons: string[] = [];
+  let score = 0;
+
+  // Condition: MACD bearish crossover just happened
+  if (ta.macdCrossover !== 'bearish') {
+    return null;
+  }
+  reasons.push('MACD Bearish Cross');
+  score += 5;
+
+  // Condition: MACD histogram is negative
+  if (ta.macdHistogram >= 0) {
+    return null;
+  }
+  reasons.push(`Hist: ${ta.macdHistogram.toFixed(2)}`);
+  score += 1;
+
+  // Condition: Price below 20 SMA (downtrend)
+  if (ta.close > ta.sma20) {
+    reasons.push('Above SMA20 (caution)');
+  } else {
+    reasons.push('Below SMA20');
+    score += 1;
+  }
+
+  // Condition: RSI below 60 (not overbought reversal)
+  if (ta.rsi14 > 70) {
+    reasons.push(`RSI ${ta.rsi14.toFixed(0)} (overbought)`);
+    score += 1;
+  } else {
+    reasons.push(`RSI ${ta.rsi14.toFixed(0)}`);
+  }
+
+  // Condition: Price > 100
+  if (ta.close < 100) {
+    return null;
+  }
+
+  return {
+    symbol: ta.symbol,
+    close: ta.close,
+    change: ta.close - ta.previousClose,
+    changePercent: ((ta.close - ta.previousClose) / ta.previousClose) * 100,
+    volume: ta.volume,
+    avgVolume: ta.avgVolume20,
+    volumeRatio: ta.volumeRatio,
+    rsi: ta.rsi14,
+    reason: reasons,
+    score,
+  };
+}
+
+// ============================================
 // Master Scanner - Run all scanners
 // ============================================
 
-export type ScannerType = 'range_expansion' | 'range_expansion_v2' | 'ema_crossover' | 'breakout' | 'ema_8_21' | 'gap_up' | 'gap_down_reversal' | 'intraday_momentum' | 'all';
+export type ScannerType = 'range_expansion' | 'range_expansion_v2' | 'ema_crossover' | 'breakout' | 'ema_8_21' | 'gap_up' | 'gap_down_reversal' | 'intraday_momentum' | 'macd_bullish' | 'macd_bearish' | 'all';
 
 export interface ScannerResults {
   scanner: string;
@@ -621,6 +753,14 @@ export function runScanner(
     case 'intraday_momentum':
       scannerFn = intradayMomentumScanner;
       scannerName = 'Intraday Momentum';
+      break;
+    case 'macd_bullish':
+      scannerFn = macdBullishScanner;
+      scannerName = 'MACD Bullish Crossover';
+      break;
+    case 'macd_bearish':
+      scannerFn = macdBearishScanner;
+      scannerName = 'MACD Bearish Crossover';
       break;
     default:
       scannerFn = rangeExpansionScanner;

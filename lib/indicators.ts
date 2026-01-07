@@ -158,6 +158,61 @@ export function getValue(arr: number[], daysAgo: number = 0): number {
   return arr[index];
 }
 
+// MACD (Moving Average Convergence Divergence)
+export interface MACDResult {
+  macdLine: number[];      // EMA12 - EMA26
+  signalLine: number[];    // 9-period EMA of MACD line
+  histogram: number[];     // MACD - Signal
+}
+
+export function calculateMACD(
+  data: number[],
+  fastPeriod: number = 12,
+  slowPeriod: number = 26,
+  signalPeriod: number = 9
+): MACDResult {
+  const emaFast = calculateEMA(data, fastPeriod);
+  const emaSlow = calculateEMA(data, slowPeriod);
+
+  // MACD Line = Fast EMA - Slow EMA
+  const macdLine: number[] = [];
+  for (let i = 0; i < data.length; i++) {
+    if (isNaN(emaFast[i]) || isNaN(emaSlow[i])) {
+      macdLine.push(NaN);
+    } else {
+      macdLine.push(emaFast[i] - emaSlow[i]);
+    }
+  }
+
+  // Signal Line = 9-period EMA of MACD Line
+  const validMacd = macdLine.filter(v => !isNaN(v));
+  const signalEma = calculateEMA(validMacd, signalPeriod);
+
+  // Map signal back to full length array
+  const signalLine: number[] = [];
+  let signalIdx = 0;
+  for (let i = 0; i < macdLine.length; i++) {
+    if (isNaN(macdLine[i])) {
+      signalLine.push(NaN);
+    } else {
+      signalLine.push(signalEma[signalIdx] || NaN);
+      signalIdx++;
+    }
+  }
+
+  // Histogram = MACD Line - Signal Line
+  const histogram: number[] = [];
+  for (let i = 0; i < data.length; i++) {
+    if (isNaN(macdLine[i]) || isNaN(signalLine[i])) {
+      histogram.push(NaN);
+    } else {
+      histogram.push(macdLine[i] - signalLine[i]);
+    }
+  }
+
+  return { macdLine, signalLine, histogram };
+}
+
 // Complete technical analysis for a stock
 export interface TechnicalAnalysis {
   symbol: string;
@@ -182,6 +237,13 @@ export interface TechnicalAnalysis {
   high20d: number;
   dailyRange: number;
   previousDailyRanges: number[];
+  // MACD (12, 26, 9)
+  macd: number;           // MACD line value
+  macdSignal: number;     // Signal line value
+  macdHistogram: number;  // Histogram value
+  macdPrevious: number;   // Previous day MACD
+  macdSignalPrevious: number; // Previous day Signal
+  macdCrossover: 'bullish' | 'bearish' | 'none'; // Crossover status
   // Weekly/Monthly (approximations from daily)
   weeklyOpen: number;
   weeklyClose: number;
@@ -230,6 +292,27 @@ export function calculateTechnicalAnalysis(
   const avgVol20 = getValue(volumeSma20);
   const volRatio = avgVol20 > 0 ? latest.volume / avgVol20 : 1;
 
+  // Calculate MACD (12, 26, 9)
+  const macdResult = calculateMACD(closes, 12, 26, 9);
+  const macdCurrent = getValue(macdResult.macdLine);
+  const macdSignalCurrent = getValue(macdResult.signalLine);
+  const macdHistCurrent = getValue(macdResult.histogram);
+  const macdPrev = getValue(macdResult.macdLine, 1);
+  const macdSignalPrev = getValue(macdResult.signalLine, 1);
+
+  // Detect MACD crossover
+  let crossover: 'bullish' | 'bearish' | 'none' = 'none';
+  if (!isNaN(macdCurrent) && !isNaN(macdSignalCurrent) && !isNaN(macdPrev) && !isNaN(macdSignalPrev)) {
+    // Bullish crossover: MACD crosses above Signal
+    if (macdPrev <= macdSignalPrev && macdCurrent > macdSignalCurrent) {
+      crossover = 'bullish';
+    }
+    // Bearish crossover: MACD crosses below Signal
+    else if (macdPrev >= macdSignalPrev && macdCurrent < macdSignalCurrent) {
+      crossover = 'bearish';
+    }
+  }
+
   return {
     symbol,
     close: latest.close,
@@ -253,6 +336,12 @@ export function calculateTechnicalAnalysis(
     high20d: getValue(high20d),
     dailyRange: latest.high - latest.low,
     previousDailyRanges: ranges.slice(-8, -1), // Last 7 days ranges
+    macd: macdCurrent,
+    macdSignal: macdSignalCurrent,
+    macdHistogram: macdHistCurrent,
+    macdPrevious: macdPrev,
+    macdSignalPrevious: macdSignalPrev,
+    macdCrossover: crossover,
     weeklyOpen: weekStart.open,
     weeklyClose: latest.close,
     monthlyOpen: monthStart.open,

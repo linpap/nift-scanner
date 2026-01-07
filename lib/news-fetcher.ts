@@ -251,6 +251,30 @@ async function fetchMoneycontrolNews(): Promise<NewsItem[]> {
   return [];
 }
 
+// Fetch from NDTV Profit RSS (via Feedburner)
+async function fetchNDTVProfitNews(): Promise<NewsItem[]> {
+  try {
+    const url = 'https://feeds.feedburner.com/ndtvprofit-latest';
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml',
+      },
+      cache: 'no-store',
+    });
+
+    if (response.ok) {
+      const xml = await response.text();
+      return parseRSSItems(xml, 'NDTV Profit');
+    }
+  } catch (error) {
+    console.error('NDTV Profit fetch error:', error);
+  }
+
+  return [];
+}
+
 // Main function to fetch all news with caching
 export async function fetchMarketNews(forceRefresh: boolean = false): Promise<NewsCache> {
   const now = Date.now();
@@ -263,14 +287,15 @@ export async function fetchMarketNews(forceRefresh: boolean = false): Promise<Ne
   console.log('[NEWS] Fetching fresh news...');
 
   // Fetch from all sources in parallel
-  const [googleNews, etNews, mcNews] = await Promise.all([
+  const [googleNews, etNews, mcNews, ndtvNews] = await Promise.all([
     fetchGoogleNews(),
     fetchEconomicTimesNews(),
     fetchMoneycontrolNews(),
+    fetchNDTVProfitNews(),
   ]);
 
   // Combine and deduplicate
-  const allNews = [...googleNews, ...etNews, ...mcNews];
+  const allNews = [...googleNews, ...etNews, ...mcNews, ...ndtvNews];
 
   // Deduplicate by title similarity
   const seen = new Set<string>();

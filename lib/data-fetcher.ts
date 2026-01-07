@@ -1,5 +1,5 @@
-// Multi-source data fetcher with fallback support
-// Uses direct fetch to Yahoo Finance and Free Indian Stock Market API
+// Data fetcher using Yahoo Finance API with retry logic
+// Includes timeout handling and exponential backoff
 
 export interface StockData {
   symbol: string;
@@ -27,62 +27,56 @@ export interface HistoricalData {
 // Delay function to avoid rate limiting
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Primary: Free Indian Stock Market API
-async function fetchFromFreeAPI(symbol: string): Promise<StockData | null> {
+// Fetch with timeout helper
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    const baseUrl = 'https://military-jobye-haiqstudios-14f59639.koyeb.app';
-    const response = await fetch(`${baseUrl}/stock?symbol=${symbol}.NS&res=num`, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'NIFT-Scanner/1.0',
-      },
-      cache: 'no-store',
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
     });
-
-    if (!response.ok) {
-      console.error(`Free API response not ok for ${symbol}: ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json();
-
-    if (!data || data.error) {
-      console.error(`Free API error for ${symbol}:`, data?.error);
-      return null;
-    }
-
-    return {
-      symbol: symbol,
-      name: data.name || data.shortName || symbol,
-      open: data.open || 0,
-      high: data.dayHigh || data.high || 0,
-      low: data.dayLow || data.low || 0,
-      close: data.price || data.regularMarketPrice || data.lastPrice || 0,
-      volume: data.volume || data.regularMarketVolume || 0,
-      previousClose: data.previousClose || data.regularMarketPreviousClose || 0,
-      change: data.change || data.regularMarketChange || 0,
-      changePercent: data.changePercent || data.regularMarketChangePercent || 0,
-      timestamp: new Date(),
-    };
-  } catch (error) {
-    console.error(`Free API error for ${symbol}:`, error);
-    return null;
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
-// Fallback: Direct Yahoo Finance API
-async function fetchFromYahooDirect(symbol: string): Promise<StockData | null> {
+// Retry with exponential backoff
+async function fetchWithRetry<T>(
+  fetchFn: () => Promise<T | null>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 500
+): Promise<T | null> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await fetchFn();
+      if (result !== null) return result;
+    } catch (error) {
+      if (attempt === maxRetries - 1) throw error;
+    }
+
+    if (attempt < maxRetries - 1) {
+      await delay(baseDelayMs * Math.pow(2, attempt));
+    }
+  }
+  return null;
+}
+
+// Yahoo Finance API for current stock data
+async function fetchFromYahoo(symbol: string): Promise<StockData | null> {
   try {
     const yahooSymbol = `${symbol}.NS`;
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=5d`;
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json',
       },
       cache: 'no-store',
-    });
+    }, 8000);
 
     if (!response.ok) {
       return null;
@@ -112,89 +106,83 @@ async function fetchFromYahooDirect(symbol: string): Promise<StockData | null> {
       timestamp: new Date(),
     };
   } catch (error) {
-    console.error(`Yahoo Direct error for ${symbol}:`, error);
+    // Silently fail - retry logic will handle
     return null;
   }
 }
 
-// Fetch historical data from Yahoo Finance
+// Fetch historical data from Yahoo Finance with retry
 export async function fetchHistoricalData(
   symbol: string,
   days: number = 250
 ): Promise<HistoricalData[]> {
-  try {
-    const yahooSymbol = `${symbol}.NS`;
-    // Use range parameter instead of period1/period2 for better compatibility
-    const range = days > 365 ? '2y' : '1y';
+  const fetchOnce = async (): Promise<HistoricalData[] | null> => {
+    try {
+      const yahooSymbol = `${symbol}.NS`;
+      const range = days > 365 ? '2y' : '1y';
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?range=${range}&interval=1d`;
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?range=${range}&interval=1d`;
+      const response = await fetchWithTimeout(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+        },
+        cache: 'no-store',
+      }, 10000);
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      console.error(`Yahoo historical fetch failed for ${symbol}: ${response.status}`);
-      return [];
-    }
-
-    const data = await response.json();
-    const result = data?.chart?.result?.[0];
-
-    if (!result) {
-      console.error(`No chart result for ${symbol}`);
-      return [];
-    }
-
-    const timestamps = result.timestamp || [];
-    const quote = result.indicators?.quote?.[0] || {};
-
-    const historical: HistoricalData[] = [];
-
-    for (let i = 0; i < timestamps.length; i++) {
-      // Skip if any value is null
-      if (
-        quote.open?.[i] == null ||
-        quote.high?.[i] == null ||
-        quote.low?.[i] == null ||
-        quote.close?.[i] == null
-      ) {
-        continue;
+      if (!response.ok) {
+        return null;
       }
 
-      historical.push({
-        date: new Date(timestamps[i] * 1000),
-        open: quote.open[i],
-        high: quote.high[i],
-        low: quote.low[i],
-        close: quote.close[i],
-        volume: quote.volume?.[i] || 0,
-      });
-    }
+      const data = await response.json();
+      const result = data?.chart?.result?.[0];
 
-    return historical;
-  } catch (error) {
-    console.error(`Historical data error for ${symbol}:`, error);
+      if (!result || !result.timestamp) {
+        return null;
+      }
+
+      const timestamps = result.timestamp;
+      const quote = result.indicators?.quote?.[0] || {};
+      const historical: HistoricalData[] = [];
+
+      for (let i = 0; i < timestamps.length; i++) {
+        if (
+          quote.open?.[i] == null ||
+          quote.high?.[i] == null ||
+          quote.low?.[i] == null ||
+          quote.close?.[i] == null
+        ) {
+          continue;
+        }
+
+        historical.push({
+          date: new Date(timestamps[i] * 1000),
+          open: quote.open[i],
+          high: quote.high[i],
+          low: quote.low[i],
+          close: quote.close[i],
+          volume: quote.volume?.[i] || 0,
+        });
+      }
+
+      return historical.length > 0 ? historical : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const result = await fetchWithRetry(fetchOnce, 2, 300);
+  if (!result) {
+    console.log(`Failed to fetch historical data for ${symbol} after retries`);
     return [];
   }
+  return result;
 }
 
-// Main fetch function with fallback
+// Main fetch function with retry
 export async function fetchStockData(symbol: string): Promise<StockData | null> {
-  // Try Free API first
-  let data = await fetchFromFreeAPI(symbol);
-
-  // Fallback to Yahoo Direct if Free API fails
-  if (!data || data.close === 0) {
-    await delay(100);
-    data = await fetchFromYahooDirect(symbol);
-  }
-
-  return data;
+  const result = await fetchWithRetry(() => fetchFromYahoo(symbol), 2, 300);
+  return result;
 }
 
 // Batch fetch with rate limiting

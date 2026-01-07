@@ -52,6 +52,9 @@ const SCANNERS = [
   { id: 'gap_up', name: 'Gap-Up Momentum', description: 'INTRADAY: 1-5% gap up + volume spike' },
   { id: 'gap_down_reversal', name: 'Gap-Down Reversal', description: 'INTRADAY: Gap down recovering' },
   { id: 'intraday_momentum', name: 'Intraday Momentum', description: 'INTRADAY: High volume + near HOD' },
+  // MACD Scanners
+  { id: 'macd_bullish', name: 'MACD Bullish Crossover', description: 'MACD (12,26,9) crossing above signal' },
+  { id: 'macd_bearish', name: 'MACD Bearish Crossover', description: 'MACD (12,26,9) crossing below signal' },
   // Swing Scanners
   { id: 'range_expansion', name: 'Range Expansion + Trend', description: 'SWING: Range > 5/7 days + SMA trend' },
   { id: 'range_expansion_v2', name: 'Range Expansion v2 (Chartink)', description: 'SWING: Range > ALL 7 days + SMA stack' },
