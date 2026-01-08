@@ -137,19 +137,28 @@ function parseRSSItems(xml: string, source: string): NewsItem[] {
         .replace(/<!\[CDATA\[|\]\]>/g, '')
         .trim();
 
-      const pubDate = pubDateMatch ? pubDateMatch[1].trim() : new Date().toISOString();
+      // Clean up pubDate - strip CDATA wrapper if present
+      let pubDate = pubDateMatch
+        ? pubDateMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim()
+        : new Date().toISOString();
+
+      // Parse timestamp properly
+      let timestamp = new Date(pubDate).getTime();
+      if (isNaN(timestamp)) {
+        timestamp = 0; // Set to 0 so old/unparseable dates sort to bottom
+      }
 
       // Filter out non-market related news
       const isMarketRelated = /stock|market|nifty|sensex|share|trading|invest|rbi|sebi|ipo|fii|dii|rupee|economy|bank|reliance|tata|infosys|hdfc/i.test(title);
 
-      if (isMarketRelated || source === 'Economic Times') {
+      if (isMarketRelated || source === 'Economic Times' || source === 'Livemint') {
         const { sentiment, score } = analyzeSentiment(title);
         items.push({
           title,
           link,
           source,
           pubDate,
-          timestamp: new Date(pubDate).getTime() || Date.now(),
+          timestamp,
           sentiment,
           sentimentScore: score,
         });
@@ -251,28 +260,36 @@ async function fetchMoneycontrolNews(): Promise<NewsItem[]> {
   return [];
 }
 
-// Fetch from NDTV Profit RSS (via Feedburner)
-async function fetchNDTVProfitNews(): Promise<NewsItem[]> {
-  try {
-    const url = 'https://feeds.feedburner.com/ndtvprofit-latest';
+// Fetch from Livemint RSS (Markets section)
+async function fetchLivemintNews(): Promise<NewsItem[]> {
+  const feeds = [
+    'https://www.livemint.com/rss/markets',
+    'https://www.livemint.com/rss/money',
+  ];
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/rss+xml, application/xml, text/xml',
-      },
-      cache: 'no-store',
-    });
+  const allItems: NewsItem[] = [];
 
-    if (response.ok) {
-      const xml = await response.text();
-      return parseRSSItems(xml, 'NDTV Profit');
+  for (const feedUrl of feeds) {
+    try {
+      const response = await fetch(feedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/rss+xml, application/xml, text/xml',
+        },
+        cache: 'no-store',
+      });
+
+      if (response.ok) {
+        const xml = await response.text();
+        const items = parseRSSItems(xml, 'Livemint');
+        allItems.push(...items);
+      }
+    } catch (error) {
+      console.error('Livemint fetch error:', error);
     }
-  } catch (error) {
-    console.error('NDTV Profit fetch error:', error);
   }
 
-  return [];
+  return allItems;
 }
 
 // Main function to fetch all news with caching
@@ -287,15 +304,15 @@ export async function fetchMarketNews(forceRefresh: boolean = false): Promise<Ne
   console.log('[NEWS] Fetching fresh news...');
 
   // Fetch from all sources in parallel
-  const [googleNews, etNews, mcNews, ndtvNews] = await Promise.all([
+  const [googleNews, etNews, mcNews, livemintNews] = await Promise.all([
     fetchGoogleNews(),
     fetchEconomicTimesNews(),
     fetchMoneycontrolNews(),
-    fetchNDTVProfitNews(),
+    fetchLivemintNews(),
   ]);
 
   // Combine and deduplicate
-  const allNews = [...googleNews, ...etNews, ...mcNews, ...ndtvNews];
+  const allNews = [...googleNews, ...etNews, ...mcNews, ...livemintNews];
 
   // Deduplicate by title similarity
   const seen = new Set<string>();
