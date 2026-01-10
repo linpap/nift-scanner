@@ -241,7 +241,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             }
           }
 
-          // Buy Signals (shown as line with point markers below bars)
+          // Buy Signals (shown as visible point markers below bars)
           const buySignalData = historical
             .map((item, i) => {
               if (indicators!.buySignals[i]) {
@@ -258,16 +258,16 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             const buySignalSeries = chart.addSeries(LineSeries, {
               color: '#10b981',
               lineWidth: 1,
-              lineStyle: 2, // Dotted
-              crosshairMarkerVisible: true,
-              crosshairMarkerRadius: 6,
+              lineVisible: false,
+              pointMarkersVisible: true,
+              pointMarkersRadius: 6,
               priceLineVisible: false,
               lastValueVisible: false,
             });
             buySignalSeries.setData(buySignalData);
           }
 
-          // Sell Signals (shown as line with point markers above bars)
+          // Sell Signals (shown as visible point markers above bars)
           const sellSignalData = historical
             .map((item, i) => {
               if (indicators!.sellSignals[i]) {
@@ -284,9 +284,9 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             const sellSignalSeries = chart.addSeries(LineSeries, {
               color: '#ef4444',
               lineWidth: 1,
-              lineStyle: 2, // Dotted
-              crosshairMarkerVisible: true,
-              crosshairMarkerRadius: 6,
+              lineVisible: false,
+              pointMarkersVisible: true,
+              pointMarkersRadius: 6,
               priceLineVisible: false,
               lastValueVisible: false,
             });

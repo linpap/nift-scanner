@@ -390,13 +390,13 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
               }
             }
 
-            // Buy Signals
+            // Buy Signals - create individual point series for each signal
             const buySignalData = historical
               .map((item, i) => {
                 if (indicators!.buySignals[i]) {
                   return {
                     time: getTime(item),
-                    value: item.low * 0.998,
+                    value: item.low * 0.995,
                   };
                 }
                 return null;
@@ -407,22 +407,22 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
               const buySignalSeries = chart.addSeries(LineSeries, {
                 color: '#10b981',
                 lineWidth: 1,
-                lineStyle: 2,
-                crosshairMarkerVisible: true,
-                crosshairMarkerRadius: 6,
+                lineVisible: false,
+                pointMarkersVisible: true,
+                pointMarkersRadius: 6,
                 priceLineVisible: false,
                 lastValueVisible: false,
               });
               buySignalSeries.setData(buySignalData);
             }
 
-            // Sell Signals
+            // Sell Signals - create individual point series
             const sellSignalData = historical
               .map((item, i) => {
                 if (indicators!.sellSignals[i]) {
                   return {
                     time: getTime(item),
-                    value: item.high * 1.002,
+                    value: item.high * 1.005,
                   };
                 }
                 return null;
@@ -433,9 +433,9 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
               const sellSignalSeries = chart.addSeries(LineSeries, {
                 color: '#ef4444',
                 lineWidth: 1,
-                lineStyle: 2,
-                crosshairMarkerVisible: true,
-                crosshairMarkerRadius: 6,
+                lineVisible: false,
+                pointMarkersVisible: true,
+                pointMarkersRadius: 6,
                 priceLineVisible: false,
                 lastValueVisible: false,
               });
