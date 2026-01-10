@@ -1,8 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { createChart, ColorType, IChartApi, CandlestickData, Time, HistogramData, CandlestickSeries, HistogramSeries, LineSeries, AreaSeries } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, CandlestickData, Time, HistogramData, CandlestickSeries, HistogramSeries, LineSeries, AreaSeries, ISeriesApi } from 'lightweight-charts';
 import { calculateAllIndicators, type OHLCV, type IndicatorData } from '@/lib/chart-indicators';
+
+// Signal label data
+interface SignalLabel {
+  time: Time;
+  price: number;
+  type: 'buy' | 'sell';
+}
 
 interface HistoricalData {
   date: string;
@@ -34,6 +41,7 @@ interface MTFTrend {
 export default function StockChart({ symbol, onClose }: StockChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +55,8 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
   const [signals, setSignals] = useState<{ buy: number; sell: number }>({ buy: 0, sell: 0 });
   const [currentTrend, setCurrentTrend] = useState<'bullish' | 'bearish' | 'neutral'>('neutral');
   const [mtfTrends, setMtfTrends] = useState<MTFTrend[]>([]);
+  const [signalLabels, setSignalLabels] = useState<SignalLabel[]>([]);
+  const [labelPositions, setLabelPositions] = useState<{ x: number; y: number; type: 'buy' | 'sell' }[]>([]);
 
   const fetchAndRenderChart = useCallback(async (tf: Timeframe) => {
     try {
@@ -177,6 +187,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
           wickUpColor: '#10b981',
           wickDownColor: '#ef4444',
         });
+        candleSeriesRef.current = candleSeries;
 
         const candleData: CandlestickData<Time>[] = historical.map((item, i) => ({
           time: getTime(item, i),
@@ -241,57 +252,27 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             }
           }
 
-          // Buy Signals (shown as visible point markers below bars)
-          const buySignalData = historical
-            .map((item, i) => {
-              if (indicators!.buySignals[i]) {
-                return {
-                  time: getTime(item, i),
-                  value: item.low * 0.995, // Slightly below low
-                };
-              }
-              return null;
-            })
-            .filter((d): d is { time: Time; value: number } => d !== null);
+          // Collect signal labels for HTML overlay rendering
+          const newSignalLabels: SignalLabel[] = [];
 
-          if (buySignalData.length > 0) {
-            const buySignalSeries = chart.addSeries(LineSeries, {
-              color: '#10b981',
-              lineWidth: 1,
-              lineVisible: false,
-              pointMarkersVisible: true,
-              pointMarkersRadius: 6,
-              priceLineVisible: false,
-              lastValueVisible: false,
-            });
-            buySignalSeries.setData(buySignalData);
+          for (let i = 0; i < historical.length; i++) {
+            if (indicators!.buySignals[i]) {
+              newSignalLabels.push({
+                time: getTime(historical[i], i),
+                price: historical[i].low * 0.993,
+                type: 'buy',
+              });
+            }
+            if (indicators!.sellSignals[i]) {
+              newSignalLabels.push({
+                time: getTime(historical[i], i),
+                price: historical[i].high * 1.007,
+                type: 'sell',
+              });
+            }
           }
 
-          // Sell Signals (shown as visible point markers above bars)
-          const sellSignalData = historical
-            .map((item, i) => {
-              if (indicators!.sellSignals[i]) {
-                return {
-                  time: getTime(item, i),
-                  value: item.high * 1.005, // Slightly above high
-                };
-              }
-              return null;
-            })
-            .filter((d): d is { time: Time; value: number } => d !== null);
-
-          if (sellSignalData.length > 0) {
-            const sellSignalSeries = chart.addSeries(LineSeries, {
-              color: '#ef4444',
-              lineWidth: 1,
-              lineVisible: false,
-              pointMarkersVisible: true,
-              pointMarkersRadius: 6,
-              priceLineVisible: false,
-              lastValueVisible: false,
-            });
-            sellSignalSeries.setData(sellSignalData);
-          }
+          setSignalLabels(newSignalLabels);
         }
 
         // Volume series
@@ -356,19 +337,65 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
     };
   }, [timeframe, fetchAndRenderChart]);
 
-  // Handle resize
+  // Calculate label positions from chart coordinates
+  const updateLabelPositions = useCallback(() => {
+    if (!chartRef.current || !candleSeriesRef.current || signalLabels.length === 0) {
+      setLabelPositions([]);
+      return;
+    }
+
+    const chart = chartRef.current;
+    const series = candleSeriesRef.current;
+    const timeScale = chart.timeScale();
+
+    const positions: { x: number; y: number; type: 'buy' | 'sell' }[] = [];
+
+    for (const label of signalLabels) {
+      const x = timeScale.timeToCoordinate(label.time);
+      const y = series.priceToCoordinate(label.price);
+
+      if (x !== null && y !== null) {
+        positions.push({ x, y, type: label.type });
+      }
+    }
+
+    setLabelPositions(positions);
+  }, [signalLabels]);
+
+  // Handle resize and update label positions
   useEffect(() => {
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({
           width: chartContainerRef.current.clientWidth,
         });
+        updateLabelPositions();
       }
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [updateLabelPositions]);
+
+  // Update label positions when chart changes
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    const chart = chartRef.current;
+
+    // Subscribe to time scale changes (pan/zoom)
+    const timeScale = chart.timeScale();
+    timeScale.subscribeVisibleLogicalRangeChange(() => {
+      updateLabelPositions();
+    });
+
+    // Initial position calculation
+    setTimeout(updateLabelPositions, 100);
+
+    return () => {
+      timeScale.unsubscribeVisibleLogicalRangeChange(() => {});
+    };
+  }, [signalLabels, updateLabelPositions]);
 
   // Handle escape key
   useEffect(() => {
@@ -450,7 +477,29 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
 
         {/* Chart */}
         <div className="p-4 relative">
-          <div ref={chartContainerRef} style={{ minHeight: '450px' }} />
+          <div ref={chartContainerRef} style={{ minHeight: '450px' }} className="relative">
+            {/* Signal Labels Overlay */}
+            {showIndicators && labelPositions.length > 0 && (
+              <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+                {labelPositions.map((pos, idx) => (
+                  <div
+                    key={idx}
+                    className={`absolute text-[10px] font-bold px-1.5 py-0.5 rounded transform -translate-x-1/2 ${
+                      pos.type === 'buy'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-red-500 text-white'
+                    }`}
+                    style={{
+                      left: pos.x,
+                      top: pos.type === 'buy' ? pos.y + 4 : pos.y - 18,
+                    }}
+                  >
+                    {pos.type === 'buy' ? 'BUY' : 'SELL'}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent"></div>
