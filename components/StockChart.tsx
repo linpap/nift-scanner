@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickData, Time, HistogramData, CandlestickSeries, HistogramSeries } from 'lightweight-charts';
 
 interface HistoricalData {
@@ -17,148 +17,167 @@ interface StockChartProps {
   onClose: () => void;
 }
 
+type Timeframe = '5m' | '15m' | '1d';
+
+const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
+  { value: '5m', label: '5 Min' },
+  { value: '15m', label: '15 Min' },
+  { value: '1d', label: 'Daily' },
+];
+
 export default function StockChart({ symbol, onClose }: StockChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState<Timeframe>('1d');
   const [stockData, setStockData] = useState<{
     price: number;
     change: number;
     changePercent: number;
   } | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchAndRenderChart = useCallback(async (tf: Timeframe) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const response = await fetch(`/api/stocks?action=historical&symbol=${symbol}&days=100`);
-        const data = await response.json();
+      // Clear existing chart
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
 
-        if (!data.success || !data.data || data.data.length === 0) {
-          setError('Failed to fetch chart data');
-          return;
-        }
+      const response = await fetch(`/api/stocks?action=historical&symbol=${symbol}&interval=${tf}`);
+      const data = await response.json();
 
-        const historical: HistoricalData[] = data.data;
+      if (!data.success || !data.data || data.data.length === 0) {
+        setError('Failed to fetch chart data');
+        return;
+      }
 
-        // Set current price info
-        const latest = historical[historical.length - 1];
-        const previous = historical[historical.length - 2];
-        if (latest && previous) {
-          const change = latest.close - previous.close;
-          const changePercent = (change / previous.close) * 100;
-          setStockData({
-            price: latest.close,
-            change,
-            changePercent
-          });
-        }
+      const historical: HistoricalData[] = data.data;
 
-        // Create chart
-        if (chartContainerRef.current && !chartRef.current) {
-          const chart = createChart(chartContainerRef.current, {
-            layout: {
-              background: { type: ColorType.Solid, color: '#1a1a1a' },
-              textColor: '#d1d5db',
-            },
-            grid: {
-              vertLines: { color: '#2d2d2d' },
-              horzLines: { color: '#2d2d2d' },
-            },
-            crosshair: {
-              mode: 1,
-            },
-            rightPriceScale: {
-              borderColor: '#2d2d2d',
-              scaleMargins: {
-                top: 0.1,
-                bottom: 0.2,
-              },
-            },
-            timeScale: {
-              borderColor: '#2d2d2d',
-              timeVisible: true,
-              secondsVisible: false,
-            },
-            width: chartContainerRef.current.clientWidth,
-            height: 400,
-          });
+      // Set current price info
+      const latest = historical[historical.length - 1];
+      const previous = historical[historical.length - 2];
+      if (latest && previous) {
+        const change = latest.close - previous.close;
+        const changePercent = (change / previous.close) * 100;
+        setStockData({
+          price: latest.close,
+          change,
+          changePercent
+        });
+      }
 
-          chartRef.current = chart;
-
-          // Candlestick series
-          const candleSeries = chart.addSeries(CandlestickSeries, {
-            upColor: '#10b981',
-            downColor: '#ef4444',
-            borderUpColor: '#10b981',
-            borderDownColor: '#ef4444',
-            wickUpColor: '#10b981',
-            wickDownColor: '#ef4444',
-          });
-
-          // Volume series
-          const volumeSeries = chart.addSeries(HistogramSeries, {
-            color: '#26a69a',
-            priceFormat: {
-              type: 'volume',
-            },
-            priceScaleId: '',
-          });
-
-          volumeSeries.priceScale().applyOptions({
+      // Create chart
+      if (chartContainerRef.current) {
+        const chart = createChart(chartContainerRef.current, {
+          layout: {
+            background: { type: ColorType.Solid, color: '#1a1a1a' },
+            textColor: '#d1d5db',
+          },
+          grid: {
+            vertLines: { color: '#2d2d2d' },
+            horzLines: { color: '#2d2d2d' },
+          },
+          crosshair: {
+            mode: 1,
+          },
+          rightPriceScale: {
+            borderColor: '#2d2d2d',
             scaleMargins: {
-              top: 0.85,
-              bottom: 0,
+              top: 0.1,
+              bottom: 0.2,
             },
-          });
+          },
+          timeScale: {
+            borderColor: '#2d2d2d',
+            timeVisible: true,
+            secondsVisible: false,
+          },
+          width: chartContainerRef.current.clientWidth,
+          height: 400,
+        });
 
-          // Format data for chart - convert date strings to YYYY-MM-DD format
-          const candleData: CandlestickData<Time>[] = historical.map((item) => ({
-            time: (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time,
+        chartRef.current = chart;
+
+        // Candlestick series
+        const candleSeries = chart.addSeries(CandlestickSeries, {
+          upColor: '#10b981',
+          downColor: '#ef4444',
+          borderUpColor: '#10b981',
+          borderDownColor: '#ef4444',
+          wickUpColor: '#10b981',
+          wickDownColor: '#ef4444',
+        });
+
+        // Volume series
+        const volumeSeries = chart.addSeries(HistogramSeries, {
+          color: '#26a69a',
+          priceFormat: {
+            type: 'volume',
+          },
+          priceScaleId: '',
+        });
+
+        volumeSeries.priceScale().applyOptions({
+          scaleMargins: {
+            top: 0.85,
+            bottom: 0,
+          },
+        });
+
+        // Format data for chart
+        const candleData: CandlestickData<Time>[] = historical.map((item) => {
+          // For intraday data, use Unix timestamp; for daily, use date string
+          let time: Time;
+          if (tf === '1d') {
+            time = (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
+          } else {
+            // For intraday, convert to Unix timestamp
+            time = Math.floor(new Date(item.date).getTime() / 1000) as Time;
+          }
+          return {
+            time,
             open: item.open,
             high: item.high,
             low: item.low,
             close: item.close,
-          }));
+          };
+        });
 
-          const volumeData: HistogramData<Time>[] = historical.map((item) => ({
-            time: (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time,
+        const volumeData: HistogramData<Time>[] = historical.map((item) => {
+          let time: Time;
+          if (tf === '1d') {
+            time = (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
+          } else {
+            time = Math.floor(new Date(item.date).getTime() / 1000) as Time;
+          }
+          return {
+            time,
             value: item.volume,
             color: item.close >= item.open ? '#10b98140' : '#ef444440',
-          }));
-
-          candleSeries.setData(candleData);
-          volumeSeries.setData(volumeData);
-
-          chart.timeScale().fitContent();
-
-          // Handle resize
-          const handleResize = () => {
-            if (chartContainerRef.current && chartRef.current) {
-              chartRef.current.applyOptions({
-                width: chartContainerRef.current.clientWidth,
-              });
-            }
           };
+        });
 
-          window.addEventListener('resize', handleResize);
+        candleSeries.setData(candleData);
+        volumeSeries.setData(volumeData);
 
-          return () => {
-            window.removeEventListener('resize', handleResize);
-          };
-        }
-      } catch (err) {
-        setError(`Failed to load chart: ${err}`);
-      } finally {
-        setLoading(false);
+        chart.timeScale().fitContent();
       }
-    };
+    } catch (err) {
+      setError(`Failed to load chart: ${err}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [symbol]);
 
-    fetchData();
+  // Fetch data when timeframe changes
+  useEffect(() => {
+    fetchAndRenderChart(timeframe);
 
     return () => {
       if (chartRef.current) {
@@ -166,7 +185,21 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
         chartRef.current = null;
       }
     };
-  }, [symbol]);
+  }, [timeframe, fetchAndRenderChart]);
+
+  // Handle resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (chartContainerRef.current && chartRef.current) {
+        chartRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Handle escape key
   useEffect(() => {
@@ -199,6 +232,22 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Timeframe Selector */}
+            <div className="flex bg-gray-800 rounded overflow-hidden">
+              {TIMEFRAME_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setTimeframe(option.value)}
+                  className={`px-3 py-1 text-sm font-medium transition ${
+                    timeframe === option.value
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <a
               href={`https://www.tradingview.com/chart/?symbol=NSE:${symbol}`}
               target="_blank"
@@ -235,6 +284,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
 
         {/* Footer */}
         <div className="px-4 pb-4 text-xs text-gray-500 text-center">
+          {timeframe === '1d' ? 'Daily data • ' : `${timeframe === '5m' ? '5-minute' : '15-minute'} candles • `}
           Press ESC or click outside to close
         </div>
       </div>
