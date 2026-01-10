@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, CandlestickData, Time, AreaSeries, CandlestickSeries } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, CandlestickData, Time, AreaSeries, CandlestickSeries, LineSeries, HistogramSeries, HistogramData } from 'lightweight-charts';
+import { calculateAllIndicators, type OHLCV, type IndicatorData } from '@/lib/chart-indicators';
 
 interface IndexData {
   date: string;
@@ -194,6 +195,9 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<Timeframe>('1d');
+  const [showIndicators, setShowIndicators] = useState(true);
+  const [signals, setSignals] = useState<{ buy: number; sell: number }>({ buy: 0, sell: 0 });
+  const [currentTrend, setCurrentTrend] = useState<'bullish' | 'bearish' | 'neutral'>('neutral');
 
   // Fetch data and create chart
   useEffect(() => {
@@ -231,6 +235,26 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           });
         }
 
+        // Calculate indicators
+        const ohlcv: OHLCV[] = historical.map(h => ({
+          date: h.date,
+          open: h.open,
+          high: h.high,
+          low: h.low,
+          close: h.close,
+          volume: h.volume,
+        }));
+
+        let indicators: IndicatorData | null = null;
+        if (showIndicators && historical.length >= 50) {
+          indicators = calculateAllIndicators(ohlcv);
+          const buyCount = indicators.buySignals.filter(Boolean).length;
+          const sellCount = indicators.sellSignals.filter(Boolean).length;
+          setSignals({ buy: buyCount, sell: sellCount });
+          const lastTrend = indicators.hybridDirection[indicators.hybridDirection.length - 1];
+          setCurrentTrend(lastTrend);
+        }
+
         // Create chart
         if (chartContainerRef.current) {
           const chart = createChart(chartContainerRef.current, {
@@ -249,7 +273,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
               borderColor: '#2d2d2d',
               scaleMargins: {
                 top: 0.1,
-                bottom: 0.1,
+                bottom: 0.2,
               },
             },
             timeScale: {
@@ -258,10 +282,40 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
               secondsVisible: false,
             },
             width: chartContainerRef.current.clientWidth || 800,
-            height: 400,
+            height: 450,
           });
 
           chartRef.current = chart;
+
+          // Helper to get time
+          const getTime = (item: IndexData): Time => {
+            if (timeframe === '1d') {
+              return (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
+            } else {
+              return Math.floor(new Date(item.date).getTime() / 1000) as Time;
+            }
+          };
+
+          // Add EMA Cloud (200 EMA area fill)
+          if (showIndicators && indicators && !isNaN(indicators.ema200[indicators.ema200.length - 1])) {
+            const cloudSeries = chart.addSeries(AreaSeries, {
+              lineColor: '#6b7280',
+              lineWidth: 2,
+              topColor: 'rgba(16, 185, 129, 0.1)',
+              bottomColor: 'rgba(239, 68, 68, 0.1)',
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+
+            const cloudData = historical.map((item, i) => ({
+              time: getTime(item),
+              value: indicators!.cloudEma[i],
+            })).filter(d => !isNaN(d.value));
+
+            if (cloudData.length > 0) {
+              cloudSeries.setData(cloudData);
+            }
+          }
 
           // Candlestick series
           const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -273,15 +327,6 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
             wickDownColor: '#ef4444',
           });
 
-          // Helper to get time
-          const getTime = (item: IndexData): Time => {
-            if (timeframe === '1d') {
-              return (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
-            } else {
-              return Math.floor(new Date(item.date).getTime() / 1000) as Time;
-            }
-          };
-
           const candleData: CandlestickData<Time>[] = historical.map((item) => ({
             time: getTime(item),
             open: item.open,
@@ -291,6 +336,137 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           }));
 
           candleSeries.setData(candleData);
+
+          // Add EMAs
+          if (showIndicators && indicators) {
+            // EMA 20 (Purple)
+            if (!isNaN(indicators.ema20[indicators.ema20.length - 1])) {
+              const ema20Series = chart.addSeries(LineSeries, {
+                color: '#a855f7',
+                lineWidth: 1,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+              const ema20Data = historical.map((item, i) => ({
+                time: getTime(item),
+                value: indicators!.ema20[i],
+              })).filter(d => !isNaN(d.value));
+              if (ema20Data.length > 0) ema20Series.setData(ema20Data);
+            }
+
+            // EMA 50 (Yellow)
+            if (!isNaN(indicators.ema50[indicators.ema50.length - 1])) {
+              const ema50Series = chart.addSeries(LineSeries, {
+                color: '#eab308',
+                lineWidth: 1,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+              const ema50Data = historical.map((item, i) => ({
+                time: getTime(item),
+                value: indicators!.ema50[i],
+              })).filter(d => !isNaN(d.value));
+              if (ema50Data.length > 0) ema50Series.setData(ema50Data);
+            }
+
+            // Hybrid Line (Supertrend average)
+            if (!isNaN(indicators.hybridLine[indicators.hybridLine.length - 1])) {
+              const hybridSeries = chart.addSeries(LineSeries, {
+                color: '#10b981',
+                lineWidth: 3,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+
+              const hybridData = historical.map((item, i) => ({
+                time: getTime(item),
+                value: indicators!.hybridLine[i],
+                color: indicators!.hybridDirection[i] === 'bullish' ? '#10b981' :
+                       indicators!.hybridDirection[i] === 'bearish' ? '#ef4444' : '#6b7280',
+              })).filter(d => !isNaN(d.value));
+
+              if (hybridData.length > 0) {
+                hybridSeries.setData(hybridData);
+              }
+            }
+
+            // Buy Signals
+            const buySignalData = historical
+              .map((item, i) => {
+                if (indicators!.buySignals[i]) {
+                  return {
+                    time: getTime(item),
+                    value: item.low * 0.998,
+                  };
+                }
+                return null;
+              })
+              .filter((d): d is { time: Time; value: number } => d !== null);
+
+            if (buySignalData.length > 0) {
+              const buySignalSeries = chart.addSeries(LineSeries, {
+                color: '#10b981',
+                lineWidth: 1,
+                lineStyle: 2,
+                crosshairMarkerVisible: true,
+                crosshairMarkerRadius: 6,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+              buySignalSeries.setData(buySignalData);
+            }
+
+            // Sell Signals
+            const sellSignalData = historical
+              .map((item, i) => {
+                if (indicators!.sellSignals[i]) {
+                  return {
+                    time: getTime(item),
+                    value: item.high * 1.002,
+                  };
+                }
+                return null;
+              })
+              .filter((d): d is { time: Time; value: number } => d !== null);
+
+            if (sellSignalData.length > 0) {
+              const sellSignalSeries = chart.addSeries(LineSeries, {
+                color: '#ef4444',
+                lineWidth: 1,
+                lineStyle: 2,
+                crosshairMarkerVisible: true,
+                crosshairMarkerRadius: 6,
+                priceLineVisible: false,
+                lastValueVisible: false,
+              });
+              sellSignalSeries.setData(sellSignalData);
+            }
+          }
+
+          // Volume series
+          const volumeSeries = chart.addSeries(HistogramSeries, {
+            color: '#26a69a',
+            priceFormat: {
+              type: 'volume',
+            },
+            priceScaleId: '',
+          });
+
+          volumeSeries.priceScale().applyOptions({
+            scaleMargins: {
+              top: 0.85,
+              bottom: 0,
+            },
+          });
+
+          const volumeData: HistogramData<Time>[] = historical.map((item) => ({
+            time: getTime(item),
+            value: item.volume,
+            color: item.close >= item.open ? '#10b98140' : '#ef444440',
+          }));
+
+          volumeSeries.setData(volumeData);
+
           chart.timeScale().fitContent();
         }
       } catch (err) {
@@ -308,7 +484,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
         chartRef.current = null;
       }
     };
-  }, [symbol, name, timeframe]);
+  }, [symbol, name, timeframe, showIndicators]);
 
   // Handle resize
   useEffect(() => {
@@ -353,8 +529,28 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
                 </span>
               </div>
             )}
+            {/* Trend Badge */}
+            {showIndicators && currentTrend !== 'neutral' && (
+              <span className={`px-2 py-0.5 text-xs font-bold rounded ${
+                currentTrend === 'bullish'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
+                  : 'bg-red-500/20 text-red-400 border border-red-500/50'
+              }`}>
+                {currentTrend.toUpperCase()}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Indicator Toggle */}
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-white">
+              <input
+                type="checkbox"
+                checked={showIndicators}
+                onChange={(e) => setShowIndicators(e.target.checked)}
+                className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-gray-900"
+              />
+              <span>Indicators</span>
+            </label>
             {/* Timeframe Selector */}
             <div className="flex bg-gray-800 rounded overflow-hidden">
               {TIMEFRAME_OPTIONS.map((option) => (
@@ -397,8 +593,42 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           )}
         </div>
 
+        {/* Legend */}
+        {showIndicators && (
+          <div className="px-4 py-2 border-t border-gray-700/50 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-0.5 bg-purple-500 rounded"></span>
+                <span className="text-gray-400">EMA 20</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-0.5 bg-yellow-500 rounded"></span>
+                <span className="text-gray-400">EMA 50</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-0.5 bg-gray-500 rounded"></span>
+                <span className="text-gray-400">EMA 200 Cloud</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-1 bg-emerald-500 rounded"></span>
+                <span className="text-gray-400">Hybrid ST</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span className="text-gray-400">Buy: {signals.buy}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                <span className="text-gray-400">Sell: {signals.sell}</span>
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="px-4 pb-4 text-xs text-gray-500 text-center">
+        <div className="px-4 pb-3 text-xs text-gray-500 text-center">
           Press ESC or click outside to close
         </div>
       </div>
