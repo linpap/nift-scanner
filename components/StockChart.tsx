@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, Time, HistogramData } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, CandlestickData, Time, HistogramData, CandlestickSeries, HistogramSeries } from 'lightweight-charts';
 
 interface HistoricalData {
   date: string;
@@ -20,8 +20,6 @@ interface StockChartProps {
 export default function StockChart({ symbol, onClose }: StockChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
-  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +91,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
           chartRef.current = chart;
 
           // Candlestick series
-          const candleSeries = chart.addCandlestickSeries({
+          const candleSeries = chart.addSeries(CandlestickSeries, {
             upColor: '#10b981',
             downColor: '#ef4444',
             borderUpColor: '#10b981',
@@ -102,10 +100,8 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             wickDownColor: '#ef4444',
           });
 
-          candleSeriesRef.current = candleSeries;
-
           // Volume series
-          const volumeSeries = chart.addHistogramSeries({
+          const volumeSeries = chart.addSeries(HistogramSeries, {
             color: '#26a69a',
             priceFormat: {
               type: 'volume',
@@ -119,8 +115,6 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
               bottom: 0,
             },
           });
-
-          volumeSeriesRef.current = volumeSeries;
 
           // Format data for chart - convert date strings to YYYY-MM-DD format
           const candleData: CandlestickData<Time>[] = historical.map((item) => ({

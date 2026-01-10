@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, Time } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, CandlestickData, Time, AreaSeries, CandlestickSeries } from 'lightweight-charts';
 
 interface IndexData {
   date: string;
@@ -96,7 +96,7 @@ function MiniChart({ symbol, yahooSymbol, name, onExpand }: MiniChartProps) {
           chartRef.current = chart;
 
           // Area series for mini chart
-          const areaSeries = chart.addAreaSeries({
+          const areaSeries = chart.addSeries(AreaSeries, {
             lineColor: latest.close >= previous.close ? '#10b981' : '#ef4444',
             topColor: latest.close >= previous.close ? '#10b98130' : '#ef444430',
             bottomColor: latest.close >= previous.close ? '#10b98105' : '#ef444405',
@@ -248,7 +248,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           chartRef.current = chart;
 
           // Candlestick series
-          const candleSeries = chart.addCandlestickSeries({
+          const candleSeries = chart.addSeries(CandlestickSeries, {
             upColor: '#10b981',
             downColor: '#ef4444',
             borderUpColor: '#10b981',
