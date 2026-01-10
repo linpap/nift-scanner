@@ -183,9 +183,11 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [indexInfo, setIndexInfo] = useState<IndexInfo | null>(null);
+  const [chartData, setChartData] = useState<IndexData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -201,6 +203,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
         }
 
         const historical: IndexData[] = data.data;
+        setChartData(historical);
 
         // Set index info
         const latest = historical[historical.length - 1];
@@ -214,72 +217,6 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
             changePercent: ((latest.close - previous.close) / previous.close) * 100,
           });
         }
-
-        // Create chart
-        if (chartContainerRef.current && !chartRef.current) {
-          const chart = createChart(chartContainerRef.current, {
-            layout: {
-              background: { type: ColorType.Solid, color: '#1a1a1a' },
-              textColor: '#d1d5db',
-            },
-            grid: {
-              vertLines: { color: '#2d2d2d' },
-              horzLines: { color: '#2d2d2d' },
-            },
-            crosshair: {
-              mode: 1,
-            },
-            rightPriceScale: {
-              borderColor: '#2d2d2d',
-              scaleMargins: {
-                top: 0.1,
-                bottom: 0.1,
-              },
-            },
-            timeScale: {
-              borderColor: '#2d2d2d',
-              timeVisible: true,
-              secondsVisible: false,
-            },
-            width: chartContainerRef.current.clientWidth,
-            height: 400,
-          });
-
-          chartRef.current = chart;
-
-          // Candlestick series
-          const candleSeries = chart.addSeries(CandlestickSeries, {
-            upColor: '#10b981',
-            downColor: '#ef4444',
-            borderUpColor: '#10b981',
-            borderDownColor: '#ef4444',
-            wickUpColor: '#10b981',
-            wickDownColor: '#ef4444',
-          });
-
-          const candleData: CandlestickData<Time>[] = historical.map((item) => ({
-            time: item.date as Time,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            close: item.close,
-          }));
-
-          candleSeries.setData(candleData);
-          chart.timeScale().fitContent();
-
-          // Handle resize
-          const handleResize = () => {
-            if (chartContainerRef.current && chartRef.current) {
-              chartRef.current.applyOptions({
-                width: chartContainerRef.current.clientWidth,
-              });
-            }
-          };
-
-          window.addEventListener('resize', handleResize);
-          return () => window.removeEventListener('resize', handleResize);
-        }
       } catch (err) {
         setError(`Failed to load chart: ${err}`);
       } finally {
@@ -288,14 +225,94 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
     };
 
     fetchData();
+  }, [symbol, name]);
 
+  // Create chart after data is loaded and loading is false
+  useEffect(() => {
+    if (loading || !chartData || chartRef.current) return;
+
+    // Small delay to ensure the container is visible and has dimensions
+    const timer = setTimeout(() => {
+      if (chartContainerRef.current && !chartRef.current) {
+        const chart = createChart(chartContainerRef.current, {
+          layout: {
+            background: { type: ColorType.Solid, color: '#1a1a1a' },
+            textColor: '#d1d5db',
+          },
+          grid: {
+            vertLines: { color: '#2d2d2d' },
+            horzLines: { color: '#2d2d2d' },
+          },
+          crosshair: {
+            mode: 1,
+          },
+          rightPriceScale: {
+            borderColor: '#2d2d2d',
+            scaleMargins: {
+              top: 0.1,
+              bottom: 0.1,
+            },
+          },
+          timeScale: {
+            borderColor: '#2d2d2d',
+            timeVisible: true,
+            secondsVisible: false,
+          },
+          width: chartContainerRef.current.clientWidth || 800,
+          height: 400,
+        });
+
+        chartRef.current = chart;
+
+        // Candlestick series
+        const candleSeries = chart.addSeries(CandlestickSeries, {
+          upColor: '#10b981',
+          downColor: '#ef4444',
+          borderUpColor: '#10b981',
+          borderDownColor: '#ef4444',
+          wickUpColor: '#10b981',
+          wickDownColor: '#ef4444',
+        });
+
+        const candleData: CandlestickData<Time>[] = chartData.map((item) => ({
+          time: item.date as Time,
+          open: item.open,
+          high: item.high,
+          low: item.low,
+          close: item.close,
+        }));
+
+        candleSeries.setData(candleData);
+        chart.timeScale().fitContent();
+      }
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [loading, chartData]);
+
+  // Handle resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (chartContainerRef.current && chartRef.current) {
+        chartRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Cleanup chart on unmount
+  useEffect(() => {
     return () => {
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
       }
     };
-  }, [symbol, name]);
+  }, []);
 
   // Handle escape key
   useEffect(() => {
@@ -338,18 +355,18 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
         </div>
 
         {/* Chart */}
-        <div className="p-4">
+        <div className="p-4 relative">
+          <div ref={chartContainerRef} style={{ minHeight: '400px' }} />
           {loading && (
-            <div className="flex items-center justify-center h-[400px]">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent"></div>
             </div>
           )}
           {error && (
-            <div className="flex items-center justify-center h-[400px] text-red-400">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 text-red-400">
               {error}
             </div>
           )}
-          <div ref={chartContainerRef} className={loading || error ? 'hidden' : ''} />
         </div>
 
         {/* Footer */}

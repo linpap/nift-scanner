@@ -449,18 +449,18 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
         </div>
 
         {/* Chart */}
-        <div className="p-4">
+        <div className="p-4 relative">
+          <div ref={chartContainerRef} style={{ minHeight: '450px' }} />
           {loading && (
-            <div className="flex items-center justify-center h-[450px]">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent"></div>
             </div>
           )}
           {error && (
-            <div className="flex items-center justify-center h-[450px] text-red-400">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 text-red-400">
               {error}
             </div>
           )}
-          <div ref={chartContainerRef} className={loading || error ? 'hidden' : ''} />
         </div>
 
         {/* Indicator Legend & MTF Dashboard */}
