@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+
+// Dynamic imports for chart components to avoid SSR issues
+const StockChart = dynamic(() => import('@/components/StockChart'), { ssr: false });
+const IndexCharts = dynamic(() => import('@/components/IndexCharts'), { ssr: false });
 
 interface ScanResult {
   symbol: string;
@@ -73,6 +78,7 @@ export default function Home() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [nextScanRefresh, setNextScanRefresh] = useState(0);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [selectedStock, setSelectedStock] = useState<string | null>(null);
 
   const toggleExpand = (symbol: string) => {
     setExpandedRows(prev => {
@@ -443,14 +449,12 @@ export default function Home() {
                           >
                             <td className="px-2 py-2 text-gray-500">{index + 1}</td>
                             <td className="px-2 py-2">
-                              <a
-                                href={`https://www.tradingview.com/chart/?symbol=NSE:${stock.symbol}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-semibold text-emerald-400 hover:text-emerald-300"
+                              <button
+                                onClick={() => setSelectedStock(stock.symbol)}
+                                className="font-semibold text-emerald-400 hover:text-emerald-300 cursor-pointer"
                               >
                                 {stock.symbol}
-                              </a>
+                              </button>
                             </td>
                             <td className="px-2 py-2 text-right font-mono">
                               {stock.close.toFixed(2)}
@@ -525,8 +529,16 @@ export default function Home() {
           )}
         </div>
 
-        {/* News Section - Takes 1 column */}
-        <div className="lg:col-span-1">
+        {/* Right Column - Index Charts & News */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Index Charts */}
+          <div className="bg-gray-900 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-white mb-4">Market Indices</h2>
+            <IndexCharts />
+            <p className="text-xs text-gray-500 mt-3 text-center">Click chart to expand</p>
+          </div>
+
+          {/* News Section */}
           <div className={`bg-gray-900 rounded-lg p-4 sticky top-4 ${shakeNews ? 'shake' : ''}`}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -615,6 +627,14 @@ export default function Home() {
         <p>Data source: Yahoo Finance (15-min delayed during market hours)</p>
         <p className="mt-1">For paper trading only. Not financial advice.</p>
       </footer>
+
+      {/* Stock Chart Modal */}
+      {selectedStock && (
+        <StockChart
+          symbol={selectedStock}
+          onClose={() => setSelectedStock(null)}
+        />
+      )}
     </main>
   );
 }
