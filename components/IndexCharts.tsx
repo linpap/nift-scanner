@@ -20,6 +20,14 @@ interface IndexInfo {
   changePercent: number;
 }
 
+type Timeframe = '5m' | '15m' | '1d';
+
+const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
+  { value: '5m', label: '5 Min' },
+  { value: '15m', label: '15 Min' },
+  { value: '1d', label: 'Daily' },
+];
+
 interface MiniChartProps {
   symbol: string;
   yahooSymbol: string;
@@ -183,18 +191,24 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [indexInfo, setIndexInfo] = useState<IndexInfo | null>(null);
-  const [chartData, setChartData] = useState<IndexData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState<Timeframe>('1d');
 
-  // Fetch data
+  // Fetch data and create chart
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAndRenderChart = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/indices?symbol=${symbol}&days=100`);
+        // Clear existing chart
+        if (chartRef.current) {
+          chartRef.current.remove();
+          chartRef.current = null;
+        }
+
+        const response = await fetch(`/api/indices?symbol=${symbol}&days=100&interval=${timeframe}`);
         const data = await response.json();
 
         if (!data.success || !data.data || data.data.length === 0) {
@@ -203,7 +217,6 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
         }
 
         const historical: IndexData[] = data.data;
-        setChartData(historical);
 
         // Set index info
         const latest = historical[historical.length - 1];
@@ -217,6 +230,69 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
             changePercent: ((latest.close - previous.close) / previous.close) * 100,
           });
         }
+
+        // Create chart
+        if (chartContainerRef.current) {
+          const chart = createChart(chartContainerRef.current, {
+            layout: {
+              background: { type: ColorType.Solid, color: '#1a1a1a' },
+              textColor: '#d1d5db',
+            },
+            grid: {
+              vertLines: { color: '#2d2d2d' },
+              horzLines: { color: '#2d2d2d' },
+            },
+            crosshair: {
+              mode: 1,
+            },
+            rightPriceScale: {
+              borderColor: '#2d2d2d',
+              scaleMargins: {
+                top: 0.1,
+                bottom: 0.1,
+              },
+            },
+            timeScale: {
+              borderColor: '#2d2d2d',
+              timeVisible: true,
+              secondsVisible: false,
+            },
+            width: chartContainerRef.current.clientWidth || 800,
+            height: 400,
+          });
+
+          chartRef.current = chart;
+
+          // Candlestick series
+          const candleSeries = chart.addSeries(CandlestickSeries, {
+            upColor: '#10b981',
+            downColor: '#ef4444',
+            borderUpColor: '#10b981',
+            borderDownColor: '#ef4444',
+            wickUpColor: '#10b981',
+            wickDownColor: '#ef4444',
+          });
+
+          // Helper to get time
+          const getTime = (item: IndexData): Time => {
+            if (timeframe === '1d') {
+              return (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
+            } else {
+              return Math.floor(new Date(item.date).getTime() / 1000) as Time;
+            }
+          };
+
+          const candleData: CandlestickData<Time>[] = historical.map((item) => ({
+            time: getTime(item),
+            open: item.open,
+            high: item.high,
+            low: item.low,
+            close: item.close,
+          }));
+
+          candleSeries.setData(candleData);
+          chart.timeScale().fitContent();
+        }
       } catch (err) {
         setError(`Failed to load chart: ${err}`);
       } finally {
@@ -224,71 +300,15 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
       }
     };
 
-    fetchData();
-  }, [symbol, name]);
+    fetchAndRenderChart();
 
-  // Create chart after data is loaded and loading is false
-  useEffect(() => {
-    if (loading || !chartData || chartRef.current) return;
-
-    // Small delay to ensure the container is visible and has dimensions
-    const timer = setTimeout(() => {
-      if (chartContainerRef.current && !chartRef.current) {
-        const chart = createChart(chartContainerRef.current, {
-          layout: {
-            background: { type: ColorType.Solid, color: '#1a1a1a' },
-            textColor: '#d1d5db',
-          },
-          grid: {
-            vertLines: { color: '#2d2d2d' },
-            horzLines: { color: '#2d2d2d' },
-          },
-          crosshair: {
-            mode: 1,
-          },
-          rightPriceScale: {
-            borderColor: '#2d2d2d',
-            scaleMargins: {
-              top: 0.1,
-              bottom: 0.1,
-            },
-          },
-          timeScale: {
-            borderColor: '#2d2d2d',
-            timeVisible: true,
-            secondsVisible: false,
-          },
-          width: chartContainerRef.current.clientWidth || 800,
-          height: 400,
-        });
-
-        chartRef.current = chart;
-
-        // Candlestick series
-        const candleSeries = chart.addSeries(CandlestickSeries, {
-          upColor: '#10b981',
-          downColor: '#ef4444',
-          borderUpColor: '#10b981',
-          borderDownColor: '#ef4444',
-          wickUpColor: '#10b981',
-          wickDownColor: '#ef4444',
-        });
-
-        const candleData: CandlestickData<Time>[] = chartData.map((item) => ({
-          time: item.date as Time,
-          open: item.open,
-          high: item.high,
-          low: item.low,
-          close: item.close,
-        }));
-
-        candleSeries.setData(candleData);
-        chart.timeScale().fitContent();
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
       }
-    }, 50);
-
-    return () => clearTimeout(timer);
-  }, [loading, chartData]);
+    };
+  }, [symbol, name, timeframe]);
 
   // Handle resize
   useEffect(() => {
@@ -302,16 +322,6 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Cleanup chart on unmount
-  useEffect(() => {
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.remove();
-        chartRef.current = null;
-      }
-    };
   }, []);
 
   // Handle escape key
@@ -344,14 +354,32 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
               </div>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-700 rounded transition text-gray-400 hover:text-white"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Timeframe Selector */}
+            <div className="flex bg-gray-800 rounded overflow-hidden">
+              {TIMEFRAME_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setTimeframe(option.value)}
+                  className={`px-3 py-1 text-sm font-medium transition ${
+                    timeframe === option.value
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-700 rounded transition text-gray-400 hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Chart */}

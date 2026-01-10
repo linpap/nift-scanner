@@ -17,8 +17,10 @@ interface YahooQuote {
 const indexCache: Map<string, { data: YahooQuote[]; timestamp: number }> = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-async function fetchIndexData(symbol: string, days: number = 100): Promise<YahooQuote[]> {
-  const cacheKey = `${symbol}-${days}`;
+type Interval = '5m' | '15m' | '1d';
+
+async function fetchIndexData(symbol: string, days: number = 100, interval: Interval = '1d'): Promise<YahooQuote[]> {
+  const cacheKey = `${symbol}-${days}-${interval}`;
   const cached = indexCache.get(cacheKey);
 
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -26,15 +28,24 @@ async function fetchIndexData(symbol: string, days: number = 100): Promise<Yahoo
   }
 
   try {
-    const period2 = Math.floor(Date.now() / 1000);
-    const period1 = period2 - (days * 24 * 60 * 60);
+    let url: string;
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
+    if (interval === '5m' || interval === '15m') {
+      // For intraday, use range parameter (Yahoo Finance limitation)
+      const range = interval === '5m' ? '5d' : '60d';
+      url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
+    } else {
+      // Daily data
+      const period2 = Math.floor(Date.now() / 1000);
+      const period1 = period2 - (days * 24 * 60 * 60);
+      url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
+    }
 
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -87,6 +98,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const symbol = searchParams.get('symbol') || '^NSEI';
   const days = parseInt(searchParams.get('days') || '100');
+  const interval = (searchParams.get('interval') || '1d') as Interval;
 
   // Validate symbol - only allow known indices
   const allowedSymbols = ['^NSEI', '^NSEBANK', '^BSESN'];
@@ -95,18 +107,32 @@ export async function GET(request: NextRequest) {
       {
         error: 'Invalid index symbol',
         allowed: allowedSymbols,
-        usage: '/api/indices?symbol=^NSEI&days=100'
+        usage: '/api/indices?symbol=^NSEI&days=100&interval=1d'
+      },
+      { status: 400 }
+    );
+  }
+
+  // Validate interval
+  const allowedIntervals: Interval[] = ['5m', '15m', '1d'];
+  if (!allowedIntervals.includes(interval)) {
+    return NextResponse.json(
+      {
+        error: 'Invalid interval',
+        allowed: allowedIntervals,
       },
       { status: 400 }
     );
   }
 
   try {
-    const data = await fetchIndexData(symbol, days);
+    const data = await fetchIndexData(symbol, days, interval);
 
     // Format data for the chart
     const formattedData = data.map((item) => ({
-      date: item.date.toISOString().split('T')[0],
+      date: interval === '1d'
+        ? item.date.toISOString().split('T')[0]
+        : item.date.toISOString(),
       open: item.open,
       high: item.high,
       low: item.low,
@@ -117,6 +143,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       symbol,
+      interval,
       data: formattedData,
       count: formattedData.length,
     });
