@@ -182,8 +182,8 @@ function highest(data: number[], period: number, index: number): number {
 
 // Calculate all indicators for a stock
 export function calculateAllIndicators(candles: OHLCV[]): IndicatorData {
-  if (candles.length < 200) {
-    // Return empty arrays if not enough data
+  // Minimum 50 candles needed for basic indicators
+  if (candles.length < 50) {
     const emptyArray = new Array(candles.length).fill(NaN);
     return {
       ema20: emptyArray,
@@ -200,11 +200,13 @@ export function calculateAllIndicators(candles: OHLCV[]): IndicatorData {
 
   const closes = candles.map(c => c.close);
 
-  // EMAs
+  // EMAs - use adaptive periods for shorter data
   const ema20 = calculateEMA(closes, 20);
-  const ema50 = calculateEMA(closes, 50);
-  const ema200 = calculateEMA(closes, 200);
-  const cloudEma = ema200; // Using same as EMA200
+  const ema50 = calculateEMA(closes, Math.min(50, candles.length - 1));
+  // For EMA200, use shorter period if not enough data (adaptive for intraday)
+  const ema200Period = candles.length >= 200 ? 200 : Math.min(100, candles.length - 1);
+  const ema200 = calculateEMA(closes, ema200Period);
+  const cloudEma = ema200; // Using same as EMA200 (or adapted)
 
   // Supertrend calculations (Fast, Medium, Slow)
   const st1 = calculateSupertrend(candles, 1.0, 1);  // Fast
@@ -251,11 +253,11 @@ export function calculateAllIndicators(candles: OHLCV[]): IndicatorData {
     sellSignals.push(sellSignal);
   }
 
-  // Trend state calculation (for dashboard)
-  const dashLen = 70;
+  // Trend state calculation (for dashboard) - adaptive for shorter data
+  const dashLen = Math.min(70, Math.floor(candles.length / 3));
   const dashMult = 1.2;
-  const zlema = calculateZLEMA(closes, dashLen);
-  const atr = calculateATR(candles, dashLen);
+  const zlema = calculateZLEMA(closes, Math.max(dashLen, 10));
+  const atr = calculateATR(candles, Math.max(dashLen, 10));
 
   const trendState: number[] = [];
   let currentTrend = 0;

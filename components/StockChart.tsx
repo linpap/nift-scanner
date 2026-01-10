@@ -437,14 +437,6 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
                 </button>
               ))}
             </div>
-            <a
-              href={`https://www.tradingview.com/chart/?symbol=NSE:${symbol}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition"
-            >
-              TradingView
-            </a>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-700 rounded transition text-gray-400 hover:text-white"
