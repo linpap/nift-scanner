@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { createChart, ColorType, IChartApi, CandlestickData, Time, HistogramData, CandlestickSeries, HistogramSeries } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, CandlestickData, Time, HistogramData, CandlestickSeries, HistogramSeries, LineSeries, AreaSeries } from 'lightweight-charts';
+import { calculateAllIndicators, type OHLCV, type IndicatorData } from '@/lib/chart-indicators';
 
 interface HistoricalData {
   date: string;
@@ -25,6 +26,11 @@ const TIMEFRAME_OPTIONS: { value: Timeframe; label: string }[] = [
   { value: '1d', label: 'Daily' },
 ];
 
+interface MTFTrend {
+  tf: string;
+  trend: 'bullish' | 'bearish' | 'neutral';
+}
+
 export default function StockChart({ symbol, onClose }: StockChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -32,11 +38,15 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<Timeframe>('1d');
+  const [showIndicators, setShowIndicators] = useState(true);
   const [stockData, setStockData] = useState<{
     price: number;
     change: number;
     changePercent: number;
   } | null>(null);
+  const [signals, setSignals] = useState<{ buy: number; sell: number }>({ buy: 0, sell: 0 });
+  const [currentTrend, setCurrentTrend] = useState<'bullish' | 'bearish' | 'neutral'>('neutral');
+  const [mtfTrends, setMtfTrends] = useState<MTFTrend[]>([]);
 
   const fetchAndRenderChart = useCallback(async (tf: Timeframe) => {
     try {
@@ -72,6 +82,30 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
         });
       }
 
+      // Calculate indicators
+      const ohlcv: OHLCV[] = historical.map(h => ({
+        date: h.date,
+        open: h.open,
+        high: h.high,
+        low: h.low,
+        close: h.close,
+        volume: h.volume,
+      }));
+
+      let indicators: IndicatorData | null = null;
+      if (showIndicators && historical.length >= 50) {
+        indicators = calculateAllIndicators(ohlcv);
+
+        // Count signals
+        const buyCount = indicators.buySignals.filter(Boolean).length;
+        const sellCount = indicators.sellSignals.filter(Boolean).length;
+        setSignals({ buy: buyCount, sell: sellCount });
+
+        // Get current trend
+        const lastTrend = indicators.hybridDirection[indicators.hybridDirection.length - 1];
+        setCurrentTrend(lastTrend);
+      }
+
       // Create chart
       if (chartContainerRef.current) {
         const chart = createChart(chartContainerRef.current, {
@@ -99,10 +133,40 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             secondsVisible: false,
           },
           width: chartContainerRef.current.clientWidth,
-          height: 400,
+          height: 450,
         });
 
         chartRef.current = chart;
+
+        // Helper to get time
+        const getTime = (item: HistoricalData, index: number): Time => {
+          if (tf === '1d') {
+            return (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
+          } else {
+            return Math.floor(new Date(item.date).getTime() / 1000) as Time;
+          }
+        };
+
+        // Add EMA Cloud (200 EMA area fill)
+        if (showIndicators && indicators && !isNaN(indicators.ema200[indicators.ema200.length - 1])) {
+          const cloudSeries = chart.addSeries(AreaSeries, {
+            lineColor: '#6b7280',
+            lineWidth: 2,
+            topColor: 'rgba(16, 185, 129, 0.1)',
+            bottomColor: 'rgba(239, 68, 68, 0.1)',
+            priceLineVisible: false,
+            lastValueVisible: false,
+          });
+
+          const cloudData = historical.map((item, i) => ({
+            time: getTime(item, i),
+            value: indicators!.cloudEma[i],
+          })).filter(d => !isNaN(d.value));
+
+          if (cloudData.length > 0) {
+            cloudSeries.setData(cloudData);
+          }
+        }
 
         // Candlestick series
         const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -113,6 +177,122 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
           wickUpColor: '#10b981',
           wickDownColor: '#ef4444',
         });
+
+        const candleData: CandlestickData<Time>[] = historical.map((item, i) => ({
+          time: getTime(item, i),
+          open: item.open,
+          high: item.high,
+          low: item.low,
+          close: item.close,
+        }));
+
+        candleSeries.setData(candleData);
+
+        // Add EMAs
+        if (showIndicators && indicators) {
+          // EMA 20 (Purple)
+          if (!isNaN(indicators.ema20[indicators.ema20.length - 1])) {
+            const ema20Series = chart.addSeries(LineSeries, {
+              color: '#a855f7',
+              lineWidth: 1,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            const ema20Data = historical.map((item, i) => ({
+              time: getTime(item, i),
+              value: indicators!.ema20[i],
+            })).filter(d => !isNaN(d.value));
+            if (ema20Data.length > 0) ema20Series.setData(ema20Data);
+          }
+
+          // EMA 50 (Yellow)
+          if (!isNaN(indicators.ema50[indicators.ema50.length - 1])) {
+            const ema50Series = chart.addSeries(LineSeries, {
+              color: '#eab308',
+              lineWidth: 1,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            const ema50Data = historical.map((item, i) => ({
+              time: getTime(item, i),
+              value: indicators!.ema50[i],
+            })).filter(d => !isNaN(d.value));
+            if (ema50Data.length > 0) ema50Series.setData(ema50Data);
+          }
+
+          // Hybrid Line (Supertrend average)
+          if (!isNaN(indicators.hybridLine[indicators.hybridLine.length - 1])) {
+            const hybridSeries = chart.addSeries(LineSeries, {
+              color: '#10b981', // Will be overridden by data
+              lineWidth: 3,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+
+            const hybridData = historical.map((item, i) => ({
+              time: getTime(item, i),
+              value: indicators!.hybridLine[i],
+              color: indicators!.hybridDirection[i] === 'bullish' ? '#10b981' :
+                     indicators!.hybridDirection[i] === 'bearish' ? '#ef4444' : '#6b7280',
+            })).filter(d => !isNaN(d.value));
+
+            if (hybridData.length > 0) {
+              hybridSeries.setData(hybridData);
+            }
+          }
+
+          // Buy Signals (shown as line with point markers below bars)
+          const buySignalData = historical
+            .map((item, i) => {
+              if (indicators!.buySignals[i]) {
+                return {
+                  time: getTime(item, i),
+                  value: item.low * 0.995, // Slightly below low
+                };
+              }
+              return null;
+            })
+            .filter((d): d is { time: Time; value: number } => d !== null);
+
+          if (buySignalData.length > 0) {
+            const buySignalSeries = chart.addSeries(LineSeries, {
+              color: '#10b981',
+              lineWidth: 1,
+              lineStyle: 2, // Dotted
+              crosshairMarkerVisible: true,
+              crosshairMarkerRadius: 6,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            buySignalSeries.setData(buySignalData);
+          }
+
+          // Sell Signals (shown as line with point markers above bars)
+          const sellSignalData = historical
+            .map((item, i) => {
+              if (indicators!.sellSignals[i]) {
+                return {
+                  time: getTime(item, i),
+                  value: item.high * 1.005, // Slightly above high
+                };
+              }
+              return null;
+            })
+            .filter((d): d is { time: Time; value: number } => d !== null);
+
+          if (sellSignalData.length > 0) {
+            const sellSignalSeries = chart.addSeries(LineSeries, {
+              color: '#ef4444',
+              lineWidth: 1,
+              lineStyle: 2, // Dotted
+              crosshairMarkerVisible: true,
+              crosshairMarkerRadius: 6,
+              priceLineVisible: false,
+              lastValueVisible: false,
+            });
+            sellSignalSeries.setData(sellSignalData);
+          }
+        }
 
         // Volume series
         const volumeSeries = chart.addSeries(HistogramSeries, {
@@ -130,50 +310,39 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
           },
         });
 
-        // Format data for chart
-        const candleData: CandlestickData<Time>[] = historical.map((item) => {
-          // For intraday data, use Unix timestamp; for daily, use date string
-          let time: Time;
-          if (tf === '1d') {
-            time = (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
-          } else {
-            // For intraday, convert to Unix timestamp
-            time = Math.floor(new Date(item.date).getTime() / 1000) as Time;
-          }
-          return {
-            time,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            close: item.close,
-          };
-        });
+        const volumeData: HistogramData<Time>[] = historical.map((item, i) => ({
+          time: getTime(item, i),
+          value: item.volume,
+          color: item.close >= item.open ? '#10b98140' : '#ef444440',
+        }));
 
-        const volumeData: HistogramData<Time>[] = historical.map((item) => {
-          let time: Time;
-          if (tf === '1d') {
-            time = (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
-          } else {
-            time = Math.floor(new Date(item.date).getTime() / 1000) as Time;
-          }
-          return {
-            time,
-            value: item.volume,
-            color: item.close >= item.open ? '#10b98140' : '#ef444440',
-          };
-        });
-
-        candleSeries.setData(candleData);
         volumeSeries.setData(volumeData);
 
         chart.timeScale().fitContent();
       }
+
+      // Fetch MTF trends
+      fetchMTFTrends();
+
     } catch (err) {
       setError(`Failed to load chart: ${err}`);
     } finally {
       setLoading(false);
     }
-  }, [symbol]);
+  }, [symbol, showIndicators]);
+
+  // Fetch multi-timeframe trend data
+  const fetchMTFTrends = async () => {
+    try {
+      const response = await fetch(`/api/stocks?action=mtf-trend&symbol=${symbol}`);
+      const data = await response.json();
+      if (data.success && data.trends) {
+        setMtfTrends(data.trends);
+      }
+    } catch (err) {
+      console.error('Failed to fetch MTF trends:', err);
+    }
+  };
 
   // Fetch data when timeframe changes
   useEffect(() => {
@@ -215,7 +384,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-lg w-full max-w-4xl mx-4 overflow-hidden shadow-2xl border border-gray-700"
+        className="bg-gray-900 rounded-lg w-full max-w-5xl mx-4 overflow-hidden shadow-2xl border border-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -230,8 +399,28 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
                 </span>
               </div>
             )}
+            {/* Trend Badge */}
+            {showIndicators && (
+              <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                currentTrend === 'bullish' ? 'bg-emerald-900 text-emerald-400' :
+                currentTrend === 'bearish' ? 'bg-red-900 text-red-400' :
+                'bg-gray-700 text-gray-400'
+              }`}>
+                {currentTrend.toUpperCase()}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Indicator Toggle */}
+            <label className="flex items-center gap-2 cursor-pointer mr-2">
+              <input
+                type="checkbox"
+                checked={showIndicators}
+                onChange={(e) => setShowIndicators(e.target.checked)}
+                className="w-4 h-4 accent-emerald-500"
+              />
+              <span className="text-xs text-gray-400">Indicators</span>
+            </label>
             {/* Timeframe Selector */}
             <div className="flex bg-gray-800 rounded overflow-hidden">
               {TIMEFRAME_OPTIONS.map((option) => (
@@ -270,21 +459,77 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
         {/* Chart */}
         <div className="p-4">
           {loading && (
-            <div className="flex items-center justify-center h-[400px]">
+            <div className="flex items-center justify-center h-[450px]">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-emerald-500 border-t-transparent"></div>
             </div>
           )}
           {error && (
-            <div className="flex items-center justify-center h-[400px] text-red-400">
+            <div className="flex items-center justify-center h-[450px] text-red-400">
               {error}
             </div>
           )}
           <div ref={chartContainerRef} className={loading || error ? 'hidden' : ''} />
         </div>
 
+        {/* Indicator Legend & MTF Dashboard */}
+        {showIndicators && !loading && !error && (
+          <div className="px-4 pb-4 flex flex-wrap gap-4 items-start justify-between">
+            {/* Legend */}
+            <div className="flex flex-wrap gap-4 text-xs">
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-purple-500"></span>
+                <span className="text-gray-400">EMA 20</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-yellow-500"></span>
+                <span className="text-gray-400">EMA 50</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-gray-500"></span>
+                <span className="text-gray-400">EMA 200 Cloud</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-1 bg-gradient-to-r from-emerald-500 to-red-500 rounded"></span>
+                <span className="text-gray-400">Hybrid ST Line</span>
+              </div>
+              {signals.buy > 0 && (
+                <div className="flex items-center gap-1">
+                  <span className="text-emerald-400">▲</span>
+                  <span className="text-gray-400">Buy ({signals.buy})</span>
+                </div>
+              )}
+              {signals.sell > 0 && (
+                <div className="flex items-center gap-1">
+                  <span className="text-red-400">▼</span>
+                  <span className="text-gray-400">Sell ({signals.sell})</span>
+                </div>
+              )}
+            </div>
+
+            {/* MTF Trend Dashboard */}
+            {mtfTrends.length > 0 && (
+              <div className="flex gap-1">
+                {mtfTrends.map((t, i) => (
+                  <div
+                    key={i}
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      t.trend === 'bullish' ? 'bg-emerald-900/50 text-emerald-400' :
+                      t.trend === 'bearish' ? 'bg-red-900/50 text-red-400' :
+                      'bg-gray-700 text-gray-400'
+                    }`}
+                  >
+                    {t.tf}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Footer */}
         <div className="px-4 pb-4 text-xs text-gray-500 text-center">
           {timeframe === '1d' ? 'Daily data • ' : `${timeframe === '5m' ? '5-minute' : '15-minute'} candles • `}
+          {showIndicators ? 'Hybrid ST/EMA • ' : ''}
           Press ESC or click outside to close
         </div>
       </div>
