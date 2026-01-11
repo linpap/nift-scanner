@@ -20,12 +20,17 @@ interface OpportunitiesData {
   sell: Opportunity[];
 }
 
-export default function TopOpportunities() {
+interface TopOpportunitiesProps {
+  onStockClick?: (symbol: string) => void;
+}
+
+export default function TopOpportunities({ onStockClick }: TopOpportunitiesProps) {
   const [data, setData] = useState<OpportunitiesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scannedAt, setScannedAt] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const fetchOpportunities = async (refresh = false) => {
     try {
@@ -93,8 +98,17 @@ export default function TopOpportunities() {
     return `${days}d ago`;
   };
 
+  const handleStockClick = (symbol: string) => {
+    if (onStockClick) {
+      onStockClick(symbol);
+    }
+  };
+
   const OpportunityCard = ({ opp, type }: { opp: Opportunity; type: 'buy' | 'sell' }) => (
-    <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition cursor-pointer">
+    <div
+      className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition cursor-pointer"
+      onClick={() => handleStockClick(opp.symbol)}
+    >
       <div className="flex items-center gap-3">
         <div
           className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center text-xs font-bold ${
@@ -107,7 +121,7 @@ export default function TopOpportunities() {
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-white">{opp.symbol}</span>
+            <span className="font-semibold text-white hover:text-emerald-400 transition">{opp.symbol}</span>
             <span className={`text-[9px] px-1 py-0.5 rounded ${
               opp.daysAgo === 0 ? 'bg-emerald-500/30 text-emerald-300' : 'bg-gray-600/50 text-gray-400'
             }`}>
@@ -142,41 +156,40 @@ export default function TopOpportunities() {
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-white">Top Opportunities</h2>
-        </div>
-        <div className="flex items-center justify-center h-40">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-white">Top Opportunities</h2>
-        </div>
-        <div className="text-center text-red-400 py-8">{error}</div>
-      </div>
-    );
-  }
+  const ExpandCollapseIcon = () => (
+    <button
+      onClick={() => setIsExpanded(!isExpanded)}
+      className="p-1 rounded hover:bg-gray-700 transition text-gray-400 hover:text-white"
+      title={isExpanded ? 'Collapse' : 'Expand'}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+  );
 
   return (
     <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-4">
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-bold text-white">Top Opportunities</h2>
-          <p className="text-xs text-gray-500">
-            Signals from last 7 days across 180+ F&O stocks
-          </p>
+        <div className="flex items-center gap-2">
+          <ExpandCollapseIcon />
+          <div>
+            <h2 className="text-lg font-bold text-white">Top Opportunities</h2>
+            {isExpanded && (
+              <p className="text-xs text-gray-500">
+                Signals from last 7 days across 180+ F&O stocks
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          {scannedAt && (
+          {isExpanded && scannedAt && (
             <span className="text-[10px] text-gray-500">
               Scanned: {formatTime(scannedAt)}
             </span>
@@ -205,53 +218,67 @@ export default function TopOpportunities() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Buy Signals */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span className="text-sm font-semibold text-emerald-400">Buy Signals</span>
-            <span className="text-xs text-gray-500">({data?.buy.length || 0})</span>
-          </div>
-          <div className="space-y-2">
-            {data?.buy && data.buy.length > 0 ? (
-              data.buy.map((opp) => (
-                <OpportunityCard key={opp.symbol} opp={opp} type="buy" />
-              ))
-            ) : (
-              <div className="text-center text-gray-500 py-4 text-sm">
-                No buy signals found
-              </div>
-            )}
-          </div>
-        </div>
+      {isExpanded && (
+        <>
+          {loading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent"></div>
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-400 py-8">{error}</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Buy Signals */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-sm font-semibold text-emerald-400">Buy Signals</span>
+                    <span className="text-xs text-gray-500">({data?.buy.length || 0})</span>
+                  </div>
+                  <div className="space-y-2">
+                    {data?.buy && data.buy.length > 0 ? (
+                      data.buy.map((opp) => (
+                        <OpportunityCard key={opp.symbol} opp={opp} type="buy" />
+                      ))
+                    ) : (
+                      <div className="text-center text-gray-500 py-4 text-sm">
+                        No buy signals found
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-        {/* Sell Signals */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-red-500"></div>
-            <span className="text-sm font-semibold text-red-400">Sell Signals</span>
-            <span className="text-xs text-gray-500">({data?.sell.length || 0})</span>
-          </div>
-          <div className="space-y-2">
-            {data?.sell && data.sell.length > 0 ? (
-              data.sell.map((opp) => (
-                <OpportunityCard key={opp.symbol} opp={opp} type="sell" />
-              ))
-            ) : (
-              <div className="text-center text-gray-500 py-4 text-sm">
-                No sell signals found
+                {/* Sell Signals */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span className="text-sm font-semibold text-red-400">Sell Signals</span>
+                    <span className="text-xs text-gray-500">({data?.sell.length || 0})</span>
+                  </div>
+                  <div className="space-y-2">
+                    {data?.sell && data.sell.length > 0 ? (
+                      data.sell.map((opp) => (
+                        <OpportunityCard key={opp.symbol} opp={opp} type="sell" />
+                      ))
+                    ) : (
+                      <div className="text-center text-gray-500 py-4 text-sm">
+                        No sell signals found
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="mt-4 pt-3 border-t border-gray-800">
-        <p className="text-[10px] text-gray-600 text-center">
-          Signals based on Hybrid Supertrend + EMA crossover strategy. Not financial advice.
-        </p>
-      </div>
+              <div className="mt-4 pt-3 border-t border-gray-800">
+                <p className="text-[10px] text-gray-600 text-center">
+                  Signals based on Hybrid Supertrend + EMA crossover strategy. Not financial advice.
+                </p>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }

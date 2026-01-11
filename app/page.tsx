@@ -101,6 +101,7 @@ export default function Home() {
   const [lastSeenNewsCount, setLastSeenNewsCount] = useState(0);
   const [newsAlertEnabled, setNewsAlertEnabled] = useState(true);
   const [shakeNews, setShakeNews] = useState(false);
+  const [isNewsExpanded, setIsNewsExpanded] = useState(true);
 
   // Play notification sound
   const playNotificationSound = () => {
@@ -540,17 +541,34 @@ export default function Home() {
           </div>
 
           {/* Top Opportunities */}
-          <TopOpportunities />
+          <TopOpportunities onStockClick={(symbol) => setSelectedStock(symbol)} />
 
           {/* News Section */}
           <div className={`bg-gray-900 rounded-lg p-4 sticky top-4 ${shakeNews ? 'shake' : ''}`}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <span>Breaking News</span>
-                {newsLoading && (
-                  <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></span>
-                )}
-              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsNewsExpanded(!isNewsExpanded)}
+                  className="p-1 rounded hover:bg-gray-700 transition text-gray-400 hover:text-white"
+                  title={isNewsExpanded ? 'Collapse' : 'Expand'}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={`h-5 w-5 transition-transform ${isNewsExpanded ? 'rotate-0' : '-rotate-90'}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <span>Breaking News</span>
+                  {newsLoading && (
+                    <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></span>
+                  )}
+                </h2>
+              </div>
               <div className="flex items-center gap-2">
                 {/* Sound Alert Toggle */}
                 <label className="flex items-center gap-1 cursor-pointer" title="Sound alert for bullish news">
@@ -572,55 +590,59 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Next refresh countdown */}
-            {nextNewsRefresh > 0 && (
-              <p className="text-xs text-gray-500 mb-3">
-                Next auto-refresh in {Math.floor(nextNewsRefresh / 60)}:{(nextNewsRefresh % 60).toString().padStart(2, '0')}
-              </p>
-            )}
+            {isNewsExpanded && (
+              <>
+                {/* Next refresh countdown */}
+                {nextNewsRefresh > 0 && (
+                  <p className="text-xs text-gray-500 mb-3">
+                    Next auto-refresh in {Math.floor(nextNewsRefresh / 60)}:{(nextNewsRefresh % 60).toString().padStart(2, '0')}
+                  </p>
+                )}
 
-            {/* News List */}
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
-              {news.length > 0 ? (
-                news.map((item, index) => (
-                  <a
-                    key={index}
-                    href={item.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
-                  >
-                    <div className="flex items-start gap-2">
-                      {/* Sentiment Icon */}
-                      <span className="text-lg flex-shrink-0 mt-0.5" title={`${item.sentiment} (${(item.sentimentScore * 100).toFixed(0)}%)`}>
-                        {item.sentiment === 'bullish' && '👍'}
-                        {item.sentiment === 'bearish' && '👎'}
-                        {item.sentiment === 'neutral' && '➖'}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-200 leading-tight mb-2 line-clamp-2">
-                          {item.title}
-                        </p>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>{item.source}</span>
-                          <span>{formatNewsTime(item.timestamp)}</span>
+                {/* News List */}
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {news.length > 0 ? (
+                    news.map((item, index) => (
+                      <a
+                        key={index}
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition"
+                      >
+                        <div className="flex items-start gap-2">
+                          {/* Sentiment Icon */}
+                          <span className="text-lg flex-shrink-0 mt-0.5" title={`${item.sentiment} (${(item.sentimentScore * 100).toFixed(0)}%)`}>
+                            {item.sentiment === 'bullish' && '👍'}
+                            {item.sentiment === 'bearish' && '👎'}
+                            {item.sentiment === 'neutral' && '➖'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-200 leading-tight mb-2 line-clamp-2">
+                              {item.title}
+                            </p>
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>{item.source}</span>
+                              <span>{formatNewsTime(item.timestamp)}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      </a>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      {newsLoading ? 'Loading news...' : 'No news available'}
                     </div>
-                  </a>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  {newsLoading ? 'Loading news...' : 'No news available'}
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* News footer */}
-            {news.length > 0 && (
-              <p className="text-xs text-gray-600 mt-3 text-center">
-                Sources: Google News, Economic Times, Moneycontrol
-              </p>
+                {/* News footer */}
+                {news.length > 0 && (
+                  <p className="text-xs text-gray-600 mt-3 text-center">
+                    Sources: Google News, Economic Times, Moneycontrol
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
