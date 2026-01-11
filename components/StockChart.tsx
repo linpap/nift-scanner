@@ -45,7 +45,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeframe, setTimeframe] = useState<Timeframe>('1d');
+  const [timeframe, setTimeframe] = useState<Timeframe>('15m');
   const [showIndicators, setShowIndicators] = useState(true);
   const [stockData, setStockData] = useState<{
     price: number;
