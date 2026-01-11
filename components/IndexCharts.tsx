@@ -330,8 +330,8 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
               timeVisible: true,
               secondsVisible: false,
             },
-            width: chartContainerRef.current.clientWidth || 800,
-            height: 450,
+            width: chartContainerRef.current.clientWidth || 1000,
+            height: 520,
           });
 
           chartRef.current = chart;
@@ -649,7 +649,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-lg w-full max-w-4xl mx-4 overflow-hidden shadow-2xl border border-gray-700"
+        className="bg-gray-900 rounded-lg w-full max-w-6xl mx-4 overflow-hidden shadow-2xl border border-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -744,7 +744,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
 
         {/* Chart */}
         <div className="p-4 relative">
-          <div ref={chartContainerRef} style={{ minHeight: '400px' }} className="relative">
+          <div ref={chartContainerRef} style={{ minHeight: '520px' }} className="relative">
             {/* Signal Labels Overlay */}
             {showIndicators && labelPositions.length > 0 && (
               <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
