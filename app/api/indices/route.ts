@@ -1,7 +1,8 @@
 // API Route: /api/indices
-// Fetch historical data for indices (Nifty, Bank Nifty)
+// Fetch historical data for indices and F&O stocks
 
 import { NextRequest, NextResponse } from 'next/server';
+import { FO_STOCKS } from '@/lib/fo-stocks';
 
 interface YahooQuote {
   date: Date;
@@ -101,14 +102,19 @@ export async function GET(request: NextRequest) {
   const interval = (searchParams.get('interval') || '1d') as Interval;
   const live = searchParams.get('live') === 'true'; // For real-time updates, skip cache
 
-  // Validate symbol - only allow known indices
-  const allowedSymbols = ['^NSEI', '^NSEBANK', '^BSESN'];
-  if (!allowedSymbols.includes(symbol)) {
+  // Validate symbol - allow indices and F&O stocks
+  const allowedIndices = ['^NSEI', '^NSEBANK', '^BSESN'];
+  const allowedStocks = FO_STOCKS.map(s => `${s}.NS`);
+  const isValidSymbol = allowedIndices.includes(symbol) ||
+                        allowedStocks.includes(symbol) ||
+                        symbol.endsWith('.NS'); // Allow any .NS suffix for flexibility
+
+  if (!isValidSymbol) {
     return NextResponse.json(
       {
-        error: 'Invalid index symbol',
-        allowed: allowedSymbols,
-        usage: '/api/indices?symbol=^NSEI&days=100&interval=1d'
+        error: 'Invalid symbol',
+        hint: 'Use ^NSEI for NIFTY, ^NSEBANK for Bank Nifty, or SYMBOL.NS for stocks',
+        usage: '/api/indices?symbol=RELIANCE.NS&days=100&interval=1d'
       },
       { status: 400 }
     );
