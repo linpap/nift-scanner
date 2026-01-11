@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickData, Time, AreaSeries, CandlestickSeries, LineSeries, HistogramSeries, HistogramData, ISeriesApi } from 'lightweight-charts';
 import { calculateAllIndicators, type OHLCV, type IndicatorData } from '@/lib/chart-indicators';
+import { FO_STOCKS } from '@/lib/fo-stocks';
+
+// All searchable symbols including indices and F&O stocks
+const ALL_SYMBOLS = [
+  { symbol: '^NSEI', name: 'NIFTY 50', type: 'index' },
+  { symbol: '^NSEBANK', name: 'BANK NIFTY', type: 'index' },
+  ...FO_STOCKS.map(s => ({ symbol: `${s}.NS`, name: s, type: 'stock' })),
+];
 
 // Signal label data
 interface SignalLabel {
@@ -193,11 +201,12 @@ interface ExpandedChartProps {
   symbol: string;
   name: string;
   onClose: () => void;
+  onSymbolChange: (symbol: string, name: string) => void;
 }
 
 const REFRESH_INTERVAL = 10000; // 10 seconds
 
-function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
+function ExpandedChart({ symbol, name, onClose, onSymbolChange }: ExpandedChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -216,6 +225,51 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
   const [labelPositions, setLabelPositions] = useState<{ x: number; y: number; type: 'buy' | 'sell' }[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isLive, setIsLive] = useState(true);
+
+  // Symbol search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<typeof ALL_SYMBOLS>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Filter suggestions based on search query
+  useEffect(() => {
+    if (searchQuery.length > 0) {
+      const query = searchQuery.toUpperCase();
+      const filtered = ALL_SYMBOLS.filter(
+        s => s.name.toUpperCase().includes(query) || s.symbol.toUpperCase().includes(query)
+      ).slice(0, 8);
+      setSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [searchQuery]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle symbol selection
+  const handleSelectSymbol = (sym: typeof ALL_SYMBOLS[0]) => {
+    setSearchQuery('');
+    setShowSuggestions(false);
+    onSymbolChange(sym.symbol, sym.name);
+  };
 
   // Ref for auto-refresh interval
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -655,7 +709,45 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-emerald-400">{name}</h2>
+            {/* Editable Symbol Search */}
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-emerald-400">{name}</h2>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery.length > 0 && suggestions.length > 0 && setShowSuggestions(true)}
+                  placeholder="Search..."
+                  className="w-32 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              {/* Suggestions Dropdown */}
+              {showSuggestions && (
+                <div
+                  ref={suggestionsRef}
+                  className="absolute top-full left-0 mt-1 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto"
+                >
+                  {suggestions.map((s) => (
+                    <button
+                      key={s.symbol}
+                      onClick={() => handleSelectSymbol(s)}
+                      className="w-full px-3 py-2 text-left hover:bg-gray-700 flex items-center justify-between group"
+                    >
+                      <span className="text-white font-medium">{s.name}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        s.type === 'index'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {s.type === 'index' ? 'INDEX' : 'F&O'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             {indexInfo && (
               <div className="flex items-center gap-3">
                 <span className="text-lg font-mono text-white">{indexInfo.price.toFixed(2)}</span>
@@ -853,6 +945,10 @@ export default function IndexCharts() {
     setExpandedIndex(null);
   };
 
+  const handleSymbolChange = (symbol: string, name: string) => {
+    setExpandedIndex({ symbol, name });
+  };
+
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
@@ -874,6 +970,7 @@ export default function IndexCharts() {
           symbol={expandedIndex.symbol}
           name={expandedIndex.name}
           onClose={handleClose}
+          onSymbolChange={handleSymbolChange}
         />
       )}
     </>
