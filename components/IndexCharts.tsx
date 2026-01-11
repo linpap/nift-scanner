@@ -195,6 +195,8 @@ interface ExpandedChartProps {
   onClose: () => void;
 }
 
+const REFRESH_INTERVAL = 10000; // 10 seconds
+
 function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -212,21 +214,28 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
   const [currentTrend, setCurrentTrend] = useState<'bullish' | 'bearish' | 'neutral'>('neutral');
   const [signalLabels, setSignalLabels] = useState<SignalLabel[]>([]);
   const [labelPositions, setLabelPositions] = useState<{ x: number; y: number; type: 'buy' | 'sell' }[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isLive, setIsLive] = useState(true);
 
-  // Fetch data and create chart
+  // Ref for auto-refresh interval
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const historicalDataRef = useRef<IndexData[]>([]);
+
+  // Fetch data and create/update chart
   useEffect(() => {
-    const fetchAndRenderChart = async () => {
+    const fetchAndRenderChart = async (isRefresh: boolean = false) => {
       try {
-        setLoading(true);
+        if (!isRefresh) setLoading(true);
         setError(null);
 
-        // Clear existing chart
-        if (chartRef.current) {
+        // Clear existing chart only on initial load
+        if (!isRefresh && chartRef.current) {
           chartRef.current.remove();
           chartRef.current = null;
         }
 
-        const response = await fetch(`/api/indices?symbol=${symbol}&days=100&interval=${timeframe}`);
+        const liveParam = isRefresh ? '&live=true' : '';
+        const response = await fetch(`/api/indices?symbol=${symbol}&days=100&interval=${timeframe}${liveParam}`);
         const data = await response.json();
 
         if (!data.success || !data.data || data.data.length === 0) {
@@ -235,6 +244,10 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
         }
 
         const historical: IndexData[] = data.data;
+        historicalDataRef.current = historical;
+
+        // Update last updated time
+        setLastUpdated(new Date(data.timestamp || Date.now()));
 
         // Set index info
         const latest = historical[historical.length - 1];
@@ -269,6 +282,28 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           setCurrentTrend(lastTrend);
         }
 
+        // Helper to get time
+        const getTime = (item: IndexData): Time => {
+          if (timeframe === '1d') {
+            return (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
+          } else {
+            return Math.floor(new Date(item.date).getTime() / 1000) as Time;
+          }
+        };
+
+        // If refreshing and chart exists, update data in place
+        if (isRefresh && chartRef.current && candleSeriesRef.current) {
+          const candleData: CandlestickData<Time>[] = historical.map((item) => ({
+            time: getTime(item),
+            open: item.open,
+            high: item.high,
+            low: item.low,
+            close: item.close,
+          }));
+          candleSeriesRef.current.setData(candleData);
+          return;
+        }
+
         // Create chart
         if (chartContainerRef.current) {
           const chart = createChart(chartContainerRef.current, {
@@ -300,15 +335,6 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           });
 
           chartRef.current = chart;
-
-          // Helper to get time
-          const getTime = (item: IndexData): Time => {
-            if (timeframe === '1d') {
-              return (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
-            } else {
-              return Math.floor(new Date(item.date).getTime() / 1000) as Time;
-            }
-          };
 
           // Add EMA Cloud (200 EMA area fill)
           if (showIndicators && showEma200Cloud && indicators && !isNaN(indicators.ema200[indicators.ema200.length - 1])) {
@@ -471,6 +497,84 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
     };
   }, [symbol, name, timeframe, showIndicators, showEma20, showEma50, showEma200Cloud, showHybridST]);
 
+  // State for data source indicator
+  const [dataSource, setDataSource] = useState<'nse' | 'nse-direct' | 'yahoo' | null>(null);
+
+  // Auto-refresh effect - uses real-time NSE data for price updates
+  useEffect(() => {
+    if (!isLive) {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const refreshData = async () => {
+      try {
+        // Use new real-time API for live price updates
+        const quoteResponse = await fetch(`/api/realtime?action=quote&symbol=${symbol}`);
+        const quoteData = await quoteResponse.json();
+
+        if (quoteData.success && quoteData.data) {
+          const quote = quoteData.data;
+          setDataSource(quote.source);
+          setLastUpdated(new Date(quoteData.timestamp));
+          setIndexInfo({
+            symbol: name,
+            name,
+            price: quote.last,
+            change: quote.change,
+            changePercent: quote.changePercent,
+          });
+        }
+
+        // Also refresh chart data (less frequently would be fine, but for simplicity we do it together)
+        const historicalResponse = await fetch(`/api/indices?symbol=${symbol}&days=100&interval=${timeframe}&live=true`);
+        const historicalData = await historicalResponse.json();
+
+        if (historicalData.success && historicalData.data && historicalData.data.length > 0) {
+          const historical: IndexData[] = historicalData.data;
+          historicalDataRef.current = historical;
+
+          // Update candlestick data if chart exists
+          if (chartRef.current && candleSeriesRef.current) {
+            const getTime = (item: IndexData): Time => {
+              if (timeframe === '1d') {
+                return (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
+              } else {
+                return Math.floor(new Date(item.date).getTime() / 1000) as Time;
+              }
+            };
+
+            const candleData: CandlestickData<Time>[] = historical.map((item) => ({
+              time: getTime(item),
+              open: item.open,
+              high: item.high,
+              low: item.low,
+              close: item.close,
+            }));
+            candleSeriesRef.current.setData(candleData);
+          }
+        }
+      } catch (err) {
+        console.error('Auto-refresh error:', err);
+      }
+    };
+
+    // Initial fetch
+    refreshData();
+
+    refreshIntervalRef.current = setInterval(refreshData, REFRESH_INTERVAL);
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [isLive, symbol, timeframe, name]);
+
   // Calculate label positions from chart coordinates
   const updateLabelPositions = useCallback(() => {
     if (!chartRef.current || !candleSeriesRef.current || signalLabels.length === 0) {
@@ -572,6 +676,35 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {/* Live/Pause Toggle */}
+            <button
+              onClick={() => setIsLive(!isLive)}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition ${
+                isLive
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
+                  : 'bg-gray-700/50 text-gray-400 border border-gray-600/50'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-500'}`}></span>
+              {isLive ? 'LIVE' : 'PAUSED'}
+            </button>
+            {/* Last Updated & Data Source */}
+            {lastUpdated && (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span>Updated: {lastUpdated.toLocaleTimeString()}</span>
+                {dataSource && (
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase ${
+                    dataSource === 'nse'
+                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      : dataSource === 'nse-direct'
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                      : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                  }`}>
+                    {dataSource === 'nse' ? 'NSE' : dataSource === 'nse-direct' ? 'NSE-DIRECT' : 'DELAYED'}
+                  </span>
+                )}
+              </div>
+            )}
             {/* Indicator Toggle */}
             <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-white">
               <input

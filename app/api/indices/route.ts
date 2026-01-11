@@ -15,15 +15,15 @@ interface YahooQuote {
 
 // In-memory cache for index data
 const indexCache: Map<string, { data: YahooQuote[]; timestamp: number }> = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 10 * 1000; // 10 seconds for real-time updates
 
 type Interval = '5m' | '15m' | '1d';
 
-async function fetchIndexData(symbol: string, days: number = 100, interval: Interval = '1d'): Promise<YahooQuote[]> {
+async function fetchIndexData(symbol: string, days: number = 100, interval: Interval = '1d', skipCache: boolean = false): Promise<YahooQuote[]> {
   const cacheKey = `${symbol}-${days}-${interval}`;
   const cached = indexCache.get(cacheKey);
 
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (!skipCache && cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
 
@@ -99,6 +99,7 @@ export async function GET(request: NextRequest) {
   const symbol = searchParams.get('symbol') || '^NSEI';
   const days = parseInt(searchParams.get('days') || '100');
   const interval = (searchParams.get('interval') || '1d') as Interval;
+  const live = searchParams.get('live') === 'true'; // For real-time updates, skip cache
 
   // Validate symbol - only allow known indices
   const allowedSymbols = ['^NSEI', '^NSEBANK', '^BSESN'];
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const data = await fetchIndexData(symbol, days, interval);
+    const data = await fetchIndexData(symbol, days, interval, live);
 
     // Format data for the chart
     const formattedData = data.map((item) => ({
@@ -146,6 +147,7 @@ export async function GET(request: NextRequest) {
       interval,
       data: formattedData,
       count: formattedData.length,
+      timestamp: Date.now(),
     });
   } catch (error) {
     return NextResponse.json(
