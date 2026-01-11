@@ -13,20 +13,34 @@ interface RecommendedStock {
 }
 
 // Based on backtest results with Hybrid Supertrend strategy (15-min timeframe, 60 days)
+// Scanned 190+ F&O stocks
 const RECOMMENDED_STOCKS: RecommendedStock[] = [
   // Highly Recommended (P&L >= 5% AND Win Rate >= 50%)
-  { symbol: '^NSEI', name: 'NIFTY 50', winRate: 60.5, totalReturn: 8.55, trades: 38, rating: 'recommended', category: 'Index' },
+  { symbol: 'JINDALSTEL', name: 'Jindal Steel', winRate: 61.1, totalReturn: 20.98, trades: 18, rating: 'recommended', category: 'Metal' },
+  { symbol: 'SRF', name: 'SRF Ltd', winRate: 50.0, totalReturn: 13.79, trades: 28, rating: 'recommended', category: 'Chemical' },
+  { symbol: 'NMDC', name: 'NMDC', winRate: 50.0, totalReturn: 10.02, trades: 30, rating: 'recommended', category: 'Metal' },
+  { symbol: 'GSPL', name: 'Gujarat State Petro', winRate: 50.0, totalReturn: 9.26, trades: 28, rating: 'recommended', category: 'Energy' },
+  { symbol: 'HDFCLIFE', name: 'HDFC Life', winRate: 50.0, totalReturn: 9.04, trades: 26, rating: 'recommended', category: 'Insurance' },
+  { symbol: 'INDHOTEL', name: 'Indian Hotels', winRate: 50.0, totalReturn: 8.26, trades: 28, rating: 'recommended', category: 'Hotel' },
 
   // Good (P&L >= 5%)
-  { symbol: 'ICICIBANK', name: 'ICICI Bank', winRate: 38.5, totalReturn: 6.41, trades: 39, rating: 'good', category: 'Bank' },
-  { symbol: 'TECHM', name: 'Tech Mahindra', winRate: 42.5, totalReturn: 6.04, trades: 40, rating: 'good', category: 'IT' },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank', winRate: 47.4, totalReturn: 5.21, trades: 38, rating: 'good', category: 'Bank' },
-  { symbol: 'INFY', name: 'Infosys', winRate: 41.5, totalReturn: 4.93, trades: 41, rating: 'good', category: 'IT' },
-  { symbol: 'INDUSINDBK', name: 'IndusInd Bank', winRate: 35.6, totalReturn: 4.47, trades: 45, rating: 'good', category: 'Bank' },
+  { symbol: 'TATASTEEL', name: 'Tata Steel', winRate: 41.7, totalReturn: 12.86, trades: 24, rating: 'good', category: 'Metal' },
+  { symbol: 'NBCC', name: 'NBCC India', winRate: 32.3, totalReturn: 11.27, trades: 31, rating: 'good', category: 'Infra' },
+  { symbol: 'TATACHEM', name: 'Tata Chemicals', winRate: 48.0, totalReturn: 9.07, trades: 25, rating: 'good', category: 'Chemical' },
+  { symbol: 'INDIGO', name: 'IndiGo Airlines', winRate: 48.3, totalReturn: 8.42, trades: 29, rating: 'good', category: 'Aviation' },
+  { symbol: 'COALINDIA', name: 'Coal India', winRate: 36.0, totalReturn: 7.99, trades: 25, rating: 'good', category: 'Mining' },
+  { symbol: 'HINDPETRO', name: 'HPCL', winRate: 33.3, totalReturn: 7.67, trades: 33, rating: 'good', category: 'Energy' },
+  { symbol: 'MOTHERSON', name: 'Motherson Sumi', winRate: 43.5, totalReturn: 6.78, trades: 23, rating: 'good', category: 'Auto' },
+  { symbol: 'TATAPOWER', name: 'Tata Power', winRate: 42.9, totalReturn: 6.65, trades: 28, rating: 'good', category: 'Power' },
+  { symbol: 'SIEMENS', name: 'Siemens India', winRate: 31.3, totalReturn: 6.39, trades: 32, rating: 'good', category: 'Industrial' },
+  { symbol: 'ADANIENT', name: 'Adani Enterprises', winRate: 42.9, totalReturn: 5.60, trades: 28, rating: 'good', category: 'Conglom' },
+  { symbol: 'GODREJPROP', name: 'Godrej Properties', winRate: 39.3, totalReturn: 5.36, trades: 28, rating: 'good', category: 'Realty' },
 
-  // OK (P&L 0-5%)
-  { symbol: 'BANDHANBNK', name: 'Bandhan Bank', winRate: 33.3, totalReturn: 1.90, trades: 54, rating: 'ok', category: 'Bank' },
-  { symbol: 'HCLTECH', name: 'HCL Tech', winRate: 40.5, totalReturn: 1.83, trades: 42, rating: 'ok', category: 'IT' },
+  // OK (P&L 2-5%)
+  { symbol: 'ULTRACEMCO', name: 'UltraTech Cement', winRate: 53.6, totalReturn: 4.70, trades: 28, rating: 'ok', category: 'Cement' },
+  { symbol: 'BPCL', name: 'BPCL', winRate: 38.5, totalReturn: 4.38, trades: 26, rating: 'ok', category: 'Energy' },
+  { symbol: 'IRCTC', name: 'IRCTC', winRate: 36.4, totalReturn: 4.09, trades: 33, rating: 'ok', category: 'Travel' },
+  { symbol: 'POWERGRID', name: 'Power Grid Corp', winRate: 44.4, totalReturn: 4.08, trades: 27, rating: 'ok', category: 'Power' },
 ];
 
 interface RecommendedStocksProps {
@@ -38,9 +52,7 @@ export default function RecommendedStocks({ onStockClick }: RecommendedStocksPro
 
   const handleStockClick = (symbol: string) => {
     if (onStockClick) {
-      // Convert index symbols for chart
-      const chartSymbol = symbol === '^NSEI' ? 'NIFTY 50' : symbol;
-      onStockClick(chartSymbol);
+      onStockClick(symbol);
     }
   };
 
@@ -70,8 +82,8 @@ export default function RecommendedStocks({ onStockClick }: RecommendedStocksPro
   };
 
   const getReturnColor = (ret: number) => {
-    if (ret >= 5) return 'text-emerald-400';
-    if (ret >= 2) return 'text-emerald-300';
+    if (ret >= 10) return 'text-emerald-400';
+    if (ret >= 5) return 'text-emerald-300';
     if (ret >= 0) return 'text-gray-300';
     return 'text-red-400';
   };
@@ -110,7 +122,7 @@ export default function RecommendedStocks({ onStockClick }: RecommendedStocksPro
             </h2>
             {isExpanded && (
               <p className="text-xs text-gray-500">
-                Best performers with Hybrid Supertrend (15-min)
+                Top performers from 190+ F&O stocks (15-min, 60 days)
               </p>
             )}
           </div>
@@ -120,7 +132,7 @@ export default function RecommendedStocks({ onStockClick }: RecommendedStocksPro
       {isExpanded && (
         <>
           {/* Stocks List */}
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[500px] overflow-y-auto">
             {RECOMMENDED_STOCKS.map((stock) => (
               <div
                 key={stock.symbol}
@@ -135,7 +147,7 @@ export default function RecommendedStocks({ onStockClick }: RecommendedStocksPro
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-white hover:text-emerald-400 transition">
-                        {stock.symbol === '^NSEI' ? 'NIFTY 50' : stock.symbol}
+                        {stock.symbol}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500">{stock.name}</div>
@@ -165,7 +177,7 @@ export default function RecommendedStocks({ onStockClick }: RecommendedStocksPro
           {/* Footer Note */}
           <div className="mt-4 pt-3 border-t border-gray-800">
             <p className="text-[10px] text-gray-600 text-center">
-              Based on 60-day backtest with Hybrid Supertrend strategy (15-min timeframe). Past performance does not guarantee future results.
+              Based on 60-day backtest with Hybrid Supertrend strategy (15-min). Past performance does not guarantee future results.
             </p>
           </div>
         </>
