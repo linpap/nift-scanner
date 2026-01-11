@@ -42,6 +42,8 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const replayIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,14 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
   const [mtfTrends, setMtfTrends] = useState<MTFTrend[]>([]);
   const [signalLabels, setSignalLabels] = useState<SignalLabel[]>([]);
   const [labelPositions, setLabelPositions] = useState<{ x: number; y: number; type: 'buy' | 'sell' }[]>([]);
+
+  // Replay state
+  const [isReplayMode, setIsReplayMode] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [replayIndex, setReplayIndex] = useState(0);
+  const [replaySpeed, setReplaySpeed] = useState(200); // ms per candle
+  const [fullData, setFullData] = useState<HistoricalData[]>([]);
+  const [fullIndicators, setFullIndicators] = useState<IndicatorData | null>(null);
 
   const fetchAndRenderChart = useCallback(async (tf: Timeframe) => {
     try {
@@ -78,6 +88,9 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
       }
 
       const historical: HistoricalData[] = data.data;
+
+      // Store full data for replay
+      setFullData(historical);
 
       // Set current price info
       const latest = historical[historical.length - 1];
@@ -105,6 +118,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
       let indicators: IndicatorData | null = null;
       if (showIndicators && historical.length >= 50) {
         indicators = calculateAllIndicators(ohlcv);
+        setFullIndicators(indicators);
 
         // Count signals
         const buyCount = indicators.buySignals.filter(Boolean).length;
@@ -283,6 +297,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
           },
           priceScaleId: '',
         });
+        volumeSeriesRef.current = volumeSeries;
 
         volumeSeries.priceScale().applyOptions({
           scaleMargins: {
@@ -397,16 +412,170 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
     };
   }, [signalLabels, updateLabelPositions]);
 
+  // Replay functions
+  const startReplay = useCallback(() => {
+    if (fullData.length < 50) return;
+    setIsReplayMode(true);
+    setReplayIndex(50); // Start with enough data for indicators
+    setIsPlaying(false);
+  }, [fullData.length]);
+
+  const stopReplay = useCallback(() => {
+    setIsReplayMode(false);
+    setIsPlaying(false);
+    setReplayIndex(0);
+    if (replayIntervalRef.current) {
+      clearInterval(replayIntervalRef.current);
+      replayIntervalRef.current = null;
+    }
+    // Re-render full chart
+    fetchAndRenderChart(timeframe);
+  }, [fetchAndRenderChart, timeframe]);
+
+  const togglePlay = useCallback(() => {
+    setIsPlaying(prev => !prev);
+  }, []);
+
+  // Helper function to get time for replay
+  const getReplayTime = useCallback((item: HistoricalData): Time => {
+    if (timeframe === '1d') {
+      return (typeof item.date === 'string' ? item.date.split('T')[0] : new Date(item.date).toISOString().split('T')[0]) as Time;
+    } else {
+      return Math.floor(new Date(item.date).getTime() / 1000) as Time;
+    }
+  }, [timeframe]);
+
+  // Update chart during replay
+  const updateReplayChart = useCallback((index: number) => {
+    if (!candleSeriesRef.current || !volumeSeriesRef.current || fullData.length === 0) return;
+
+    const visibleData = fullData.slice(0, index + 1);
+
+    // Update candles
+    const candleData: CandlestickData<Time>[] = visibleData.map((item) => ({
+      time: getReplayTime(item),
+      open: item.open,
+      high: item.high,
+      low: item.low,
+      close: item.close,
+    }));
+    candleSeriesRef.current.setData(candleData);
+
+    // Update volume
+    const volumeData: HistogramData<Time>[] = visibleData.map((item) => ({
+      time: getReplayTime(item),
+      value: item.volume,
+      color: item.close >= item.open ? '#10b98140' : '#ef444440',
+    }));
+    volumeSeriesRef.current.setData(volumeData);
+
+    // Update price info
+    const latest = visibleData[visibleData.length - 1];
+    const previous = visibleData[visibleData.length - 2];
+    if (latest && previous) {
+      const change = latest.close - previous.close;
+      const changePercent = (change / previous.close) * 100;
+      setStockData({
+        price: latest.close,
+        change,
+        changePercent
+      });
+    }
+
+    // Update signal labels for visible data only
+    if (fullIndicators) {
+      const newSignalLabels: SignalLabel[] = [];
+      for (let i = 0; i < visibleData.length; i++) {
+        if (fullIndicators.buySignals[i]) {
+          newSignalLabels.push({
+            time: getReplayTime(visibleData[i]),
+            price: visibleData[i].low * 0.993,
+            type: 'buy',
+          });
+        }
+        if (fullIndicators.sellSignals[i]) {
+          newSignalLabels.push({
+            time: getReplayTime(visibleData[i]),
+            price: visibleData[i].high * 1.007,
+            type: 'sell',
+          });
+        }
+      }
+      setSignalLabels(newSignalLabels);
+
+      // Update current trend
+      const trendIdx = Math.min(index, fullIndicators.hybridDirection.length - 1);
+      setCurrentTrend(fullIndicators.hybridDirection[trendIdx]);
+    }
+
+    // Scroll to show latest candle
+    if (chartRef.current) {
+      chartRef.current.timeScale().scrollToPosition(2, false);
+    }
+  }, [fullData, fullIndicators, getReplayTime]);
+
+  // Replay playback effect
+  useEffect(() => {
+    if (!isReplayMode || !isPlaying) {
+      if (replayIntervalRef.current) {
+        clearInterval(replayIntervalRef.current);
+        replayIntervalRef.current = null;
+      }
+      return;
+    }
+
+    replayIntervalRef.current = setInterval(() => {
+      setReplayIndex(prev => {
+        const next = prev + 1;
+        if (next >= fullData.length) {
+          setIsPlaying(false);
+          return prev;
+        }
+        return next;
+      });
+    }, replaySpeed);
+
+    return () => {
+      if (replayIntervalRef.current) {
+        clearInterval(replayIntervalRef.current);
+        replayIntervalRef.current = null;
+      }
+    };
+  }, [isReplayMode, isPlaying, replaySpeed, fullData.length]);
+
+  // Update chart when replay index changes
+  useEffect(() => {
+    if (isReplayMode && replayIndex > 0) {
+      updateReplayChart(replayIndex);
+    }
+  }, [isReplayMode, replayIndex, updateReplayChart]);
+
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        if (isReplayMode) {
+          stopReplay();
+        } else {
+          onClose();
+        }
+      }
+      // Space to toggle play/pause
+      if (e.key === ' ' && isReplayMode) {
+        e.preventDefault();
+        togglePlay();
+      }
+      // Arrow keys for step
+      if (e.key === 'ArrowRight' && isReplayMode && !isPlaying) {
+        setReplayIndex(prev => Math.min(prev + 1, fullData.length - 1));
+      }
+      if (e.key === 'ArrowLeft' && isReplayMode && !isPlaying) {
+        setReplayIndex(prev => Math.max(prev - 1, 50));
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+  }, [onClose, isReplayMode, stopReplay, togglePlay, isPlaying, fullData.length]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
@@ -438,6 +607,30 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Replay Button */}
+            {!isReplayMode ? (
+              <button
+                onClick={startReplay}
+                disabled={fullData.length < 50}
+                className="px-3 py-1 text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                title="Replay chart candle by candle"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Replay
+              </button>
+            ) : (
+              <button
+                onClick={stopReplay}
+                className="px-3 py-1 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded transition flex items-center gap-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Exit Replay
+              </button>
+            )}
             {/* Indicator Toggle */}
             <label className="flex items-center gap-2 cursor-pointer mr-2">
               <input
@@ -453,19 +646,22 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
               {TIMEFRAME_OPTIONS.map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => setTimeframe(option.value)}
+                  onClick={() => {
+                    if (!isReplayMode) setTimeframe(option.value);
+                  }}
+                  disabled={isReplayMode}
                   className={`px-3 py-1 text-sm font-medium transition ${
                     timeframe === option.value
                       ? 'bg-emerald-600 text-white'
                       : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                  }`}
+                  } ${isReplayMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
             <button
-              onClick={onClose}
+              onClick={isReplayMode ? stopReplay : onClose}
               className="p-2 hover:bg-gray-700 rounded transition text-gray-400 hover:text-white"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -511,6 +707,87 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
             </div>
           )}
         </div>
+
+        {/* Replay Controls */}
+        {isReplayMode && (
+          <div className="px-4 pb-4">
+            <div className="bg-gray-800 rounded-lg p-3 flex items-center gap-4">
+              {/* Play/Pause Button */}
+              <button
+                onClick={togglePlay}
+                className={`p-2 rounded-full transition ${
+                  isPlaying ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-emerald-600 hover:bg-emerald-500'
+                } text-white`}
+              >
+                {isPlaying ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Step Buttons */}
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setReplayIndex(prev => Math.max(prev - 1, 50))}
+                  disabled={isPlaying}
+                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 disabled:opacity-50 text-sm"
+                >
+                  ◀ Step
+                </button>
+                <button
+                  onClick={() => setReplayIndex(prev => Math.min(prev + 1, fullData.length - 1))}
+                  disabled={isPlaying}
+                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 disabled:opacity-50 text-sm"
+                >
+                  Step ▶
+                </button>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="flex-1">
+                <input
+                  type="range"
+                  min={50}
+                  max={fullData.length - 1}
+                  value={replayIndex}
+                  onChange={(e) => setReplayIndex(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>Candle {replayIndex - 49} / {fullData.length - 50}</span>
+                  <span>{Math.round(((replayIndex - 50) / (fullData.length - 50)) * 100)}%</span>
+                </div>
+              </div>
+
+              {/* Speed Control */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Speed:</span>
+                <select
+                  value={replaySpeed}
+                  onChange={(e) => setReplaySpeed(Number(e.target.value))}
+                  className="bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600"
+                >
+                  <option value={500}>0.5x</option>
+                  <option value={200}>1x</option>
+                  <option value={100}>2x</option>
+                  <option value={50}>4x</option>
+                  <option value={25}>8x</option>
+                </select>
+              </div>
+
+              {/* Keyboard shortcuts hint */}
+              <div className="text-xs text-gray-500 hidden md:block">
+                Space: Play/Pause | ←→: Step
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Indicator Legend & MTF Dashboard */}
         {showIndicators && !loading && !error && (
