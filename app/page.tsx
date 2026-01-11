@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 const StockChart = dynamic(() => import('@/components/StockChart'), { ssr: false });
 const IndexCharts = dynamic(() => import('@/components/IndexCharts'), { ssr: false });
 const TopOpportunities = dynamic(() => import('@/components/TopOpportunities'), { ssr: false });
+const RecommendedStocks = dynamic(() => import('@/components/RecommendedStocks'), { ssr: false });
 
 interface ScanResult {
   symbol: string;
@@ -542,6 +543,9 @@ export default function Home() {
 
           {/* Top Opportunities */}
           <TopOpportunities onStockClick={(symbol) => setSelectedStock(symbol)} />
+
+          {/* Recommended Stocks (Backtested) */}
+          <RecommendedStocks onStockClick={(symbol) => setSelectedStock(symbol)} />
 
           {/* News Section */}
           <div className={`bg-gray-900 rounded-lg p-4 sticky top-4 ${shakeNews ? 'shake' : ''}`}>
