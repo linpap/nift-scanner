@@ -204,6 +204,10 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<Timeframe>('1d');
   const [showIndicators, setShowIndicators] = useState(true);
+  const [showEma20, setShowEma20] = useState(true);
+  const [showEma50, setShowEma50] = useState(true);
+  const [showEma200Cloud, setShowEma200Cloud] = useState(true);
+  const [showHybridST, setShowHybridST] = useState(true);
   const [signals, setSignals] = useState<{ buy: number; sell: number }>({ buy: 0, sell: 0 });
   const [currentTrend, setCurrentTrend] = useState<'bullish' | 'bearish' | 'neutral'>('neutral');
   const [signalLabels, setSignalLabels] = useState<SignalLabel[]>([]);
@@ -307,7 +311,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           };
 
           // Add EMA Cloud (200 EMA area fill)
-          if (showIndicators && indicators && !isNaN(indicators.ema200[indicators.ema200.length - 1])) {
+          if (showIndicators && showEma200Cloud && indicators && !isNaN(indicators.ema200[indicators.ema200.length - 1])) {
             const cloudSeries = chart.addSeries(AreaSeries, {
               lineColor: '#6b7280',
               lineWidth: 2,
@@ -351,7 +355,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           // Add EMAs
           if (showIndicators && indicators) {
             // EMA 20 (Purple)
-            if (!isNaN(indicators.ema20[indicators.ema20.length - 1])) {
+            if (showEma20 && !isNaN(indicators.ema20[indicators.ema20.length - 1])) {
               const ema20Series = chart.addSeries(LineSeries, {
                 color: '#a855f7',
                 lineWidth: 1,
@@ -366,7 +370,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
             }
 
             // EMA 50 (Yellow)
-            if (!isNaN(indicators.ema50[indicators.ema50.length - 1])) {
+            if (showEma50 && !isNaN(indicators.ema50[indicators.ema50.length - 1])) {
               const ema50Series = chart.addSeries(LineSeries, {
                 color: '#eab308',
                 lineWidth: 1,
@@ -381,7 +385,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
             }
 
             // Hybrid Line (Supertrend average)
-            if (!isNaN(indicators.hybridLine[indicators.hybridLine.length - 1])) {
+            if (showHybridST && !isNaN(indicators.hybridLine[indicators.hybridLine.length - 1])) {
               const hybridSeries = chart.addSeries(LineSeries, {
                 color: '#10b981',
                 lineWidth: 3,
@@ -465,7 +469,7 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
         chartRef.current = null;
       }
     };
-  }, [symbol, name, timeframe, showIndicators]);
+  }, [symbol, name, timeframe, showIndicators, showEma20, showEma50, showEma200Cloud, showHybridST]);
 
   // Calculate label positions from chart coordinates
   const updateLabelPositions = useCallback(() => {
@@ -642,26 +646,46 @@ function ExpandedChart({ symbol, name, onClose }: ExpandedChartProps) {
           )}
         </div>
 
-        {/* Legend */}
+        {/* Legend - Clickable toggles */}
         {showIndicators && (
           <div className="px-4 py-2 border-t border-gray-700/50 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-4 text-xs">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-0.5 bg-purple-500 rounded"></span>
-                <span className="text-gray-400">EMA 20</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-0.5 bg-yellow-500 rounded"></span>
-                <span className="text-gray-400">EMA 50</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-0.5 bg-gray-500 rounded"></span>
-                <span className="text-gray-400">EMA 200 Cloud</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-1 bg-emerald-500 rounded"></span>
-                <span className="text-gray-400">Hybrid ST</span>
-              </span>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <button
+                onClick={() => setShowEma20(!showEma20)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded transition ${
+                  showEma20 ? 'bg-purple-500/20 border border-purple-500/50' : 'bg-gray-700/50 border border-gray-600/50 opacity-50'
+                }`}
+              >
+                <span className={`w-3 h-0.5 rounded ${showEma20 ? 'bg-purple-500' : 'bg-gray-500'}`}></span>
+                <span className={showEma20 ? 'text-purple-300' : 'text-gray-500'}>EMA 20</span>
+              </button>
+              <button
+                onClick={() => setShowEma50(!showEma50)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded transition ${
+                  showEma50 ? 'bg-yellow-500/20 border border-yellow-500/50' : 'bg-gray-700/50 border border-gray-600/50 opacity-50'
+                }`}
+              >
+                <span className={`w-3 h-0.5 rounded ${showEma50 ? 'bg-yellow-500' : 'bg-gray-500'}`}></span>
+                <span className={showEma50 ? 'text-yellow-300' : 'text-gray-500'}>EMA 50</span>
+              </button>
+              <button
+                onClick={() => setShowEma200Cloud(!showEma200Cloud)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded transition ${
+                  showEma200Cloud ? 'bg-gray-500/20 border border-gray-500/50' : 'bg-gray-700/50 border border-gray-600/50 opacity-50'
+                }`}
+              >
+                <span className={`w-3 h-0.5 rounded ${showEma200Cloud ? 'bg-gray-400' : 'bg-gray-600'}`}></span>
+                <span className={showEma200Cloud ? 'text-gray-300' : 'text-gray-500'}>EMA 200 Cloud</span>
+              </button>
+              <button
+                onClick={() => setShowHybridST(!showHybridST)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded transition ${
+                  showHybridST ? 'bg-emerald-500/20 border border-emerald-500/50' : 'bg-gray-700/50 border border-gray-600/50 opacity-50'
+                }`}
+              >
+                <span className={`w-3 h-1 rounded ${showHybridST ? 'bg-emerald-500' : 'bg-gray-500'}`}></span>
+                <span className={showHybridST ? 'text-emerald-300' : 'text-gray-500'}>Hybrid ST</span>
+              </button>
             </div>
             <div className="flex items-center gap-4 text-xs">
               <span className="flex items-center gap-1.5">
