@@ -15,6 +15,8 @@ interface Opportunity {
   trend: 'bullish' | 'bearish' | 'neutral';
   strength: number; // Signal strength 1-5
   timestamp: number;
+  signalDay: number; // 0 = today, 1 = yesterday, etc.
+  daysAgo: number;
 }
 
 interface CachedOpportunities {
@@ -131,14 +133,15 @@ async function scanForOpportunities(): Promise<CachedOpportunities> {
         const indicators = calculateAllIndicators(candles);
         const lastIdx = candles.length - 1;
 
-        // Check for recent signals (last 3 days)
-        for (let j = Math.max(0, lastIdx - 2); j <= lastIdx; j++) {
+        // Check for recent signals (last 7 days for better coverage)
+        for (let j = Math.max(0, lastIdx - 6); j <= lastIdx; j++) {
           const isBuySignal = indicators.buySignals[j];
           const isSellSignal = indicators.sellSignals[j];
 
           if (isBuySignal || isSellSignal) {
             const signalType = isBuySignal ? 'buy' : 'sell';
             const strength = calculateSignalStrength(candles, indicators, signalType);
+            const daysAgo = lastIdx - j;
 
             const latest = candles[lastIdx];
             const previous = candles[lastIdx - 1];
@@ -155,7 +158,8 @@ async function scanForOpportunities(): Promise<CachedOpportunities> {
               trend: indicators.hybridDirection[lastIdx],
               strength,
               timestamp: Date.now(),
-              signalDay: j === lastIdx ? 0 : lastIdx - j, // 0 = today, 1 = yesterday, etc.
+              signalDay: daysAgo, // 0 = today, 1 = yesterday, etc.
+              daysAgo, // for sorting - prefer recent signals
             };
           }
         }
@@ -186,9 +190,15 @@ async function scanForOpportunities(): Promise<CachedOpportunities> {
     }
   }
 
-  // Sort by strength (highest first), then by signal recency
-  buyOpportunities.sort((a, b) => b.strength - a.strength || a.timestamp - b.timestamp);
-  sellOpportunities.sort((a, b) => b.strength - a.strength || a.timestamp - b.timestamp);
+  // Sort by recency first (lower daysAgo = more recent), then by strength
+  buyOpportunities.sort((a, b) => {
+    if (a.daysAgo !== b.daysAgo) return a.daysAgo - b.daysAgo; // More recent first
+    return b.strength - a.strength; // Then higher strength
+  });
+  sellOpportunities.sort((a, b) => {
+    if (a.daysAgo !== b.daysAgo) return a.daysAgo - b.daysAgo;
+    return b.strength - a.strength;
+  });
 
   return {
     buy: buyOpportunities.slice(0, 10), // Top 10 buy signals

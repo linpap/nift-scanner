@@ -12,6 +12,7 @@ interface Opportunity {
   trend: 'bullish' | 'bearish' | 'neutral';
   strength: number;
   timestamp: number;
+  daysAgo?: number;
 }
 
 interface OpportunitiesData {
@@ -86,20 +87,33 @@ export default function TopOpportunities() {
     );
   };
 
+  const formatDaysAgo = (days?: number) => {
+    if (days === undefined || days === 0) return 'Today';
+    if (days === 1) return '1d ago';
+    return `${days}d ago`;
+  };
+
   const OpportunityCard = ({ opp, type }: { opp: Opportunity; type: 'buy' | 'sell' }) => (
     <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition cursor-pointer">
       <div className="flex items-center gap-3">
         <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold ${
+          className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center text-xs font-bold ${
             type === 'buy'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               : 'bg-red-500/20 text-red-400 border border-red-500/30'
           }`}
         >
-          {type === 'buy' ? 'BUY' : 'SELL'}
+          <span>{type === 'buy' ? 'BUY' : 'SELL'}</span>
         </div>
         <div>
-          <div className="font-semibold text-white">{opp.symbol}</div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-white">{opp.symbol}</span>
+            <span className={`text-[9px] px-1 py-0.5 rounded ${
+              opp.daysAgo === 0 ? 'bg-emerald-500/30 text-emerald-300' : 'bg-gray-600/50 text-gray-400'
+            }`}>
+              {formatDaysAgo(opp.daysAgo)}
+            </span>
+          </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <span className="font-mono">{opp.price.toFixed(2)}</span>
             <span className={opp.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
@@ -158,7 +172,7 @@ export default function TopOpportunities() {
         <div>
           <h2 className="text-lg font-bold text-white">Top Opportunities</h2>
           <p className="text-xs text-gray-500">
-            Daily scan of 180+ stocks at 9:30 AM IST
+            Signals from last 7 days across 180+ F&O stocks
           </p>
         </div>
         <div className="flex items-center gap-2">
