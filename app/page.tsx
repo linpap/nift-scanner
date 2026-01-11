@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 // Dynamic imports for chart components to avoid SSR issues
 const StockChart = dynamic(() => import('@/components/StockChart'), { ssr: false });
 const IndexCharts = dynamic(() => import('@/components/IndexCharts'), { ssr: false });
+const TopOpportunities = dynamic(() => import('@/components/TopOpportunities'), { ssr: false });
 
 interface ScanResult {
   symbol: string;
@@ -537,6 +538,9 @@ export default function Home() {
             <IndexCharts />
             <p className="text-xs text-gray-500 mt-3 text-center">Click chart to expand</p>
           </div>
+
+          {/* Top Opportunities */}
+          <TopOpportunities />
 
           {/* News Section */}
           <div className={`bg-gray-900 rounded-lg p-4 sticky top-4 ${shakeNews ? 'shake' : ''}`}>
