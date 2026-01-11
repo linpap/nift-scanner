@@ -30,7 +30,7 @@ export default function TopOpportunities({ onStockClick }: TopOpportunitiesProps
   const [error, setError] = useState<string | null>(null);
   const [scannedAt, setScannedAt] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const fetchOpportunities = async (refresh = false) => {
     try {

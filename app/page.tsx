@@ -101,7 +101,7 @@ export default function Home() {
   const [lastSeenNewsCount, setLastSeenNewsCount] = useState(0);
   const [newsAlertEnabled, setNewsAlertEnabled] = useState(true);
   const [shakeNews, setShakeNews] = useState(false);
-  const [isNewsExpanded, setIsNewsExpanded] = useState(true);
+  const [isNewsExpanded, setIsNewsExpanded] = useState(false);
 
   // Play notification sound
   const playNotificationSound = () => {
