@@ -650,8 +650,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="mt-12 text-center text-gray-600 text-sm">
-        <p>Data source: Yahoo Finance (15-min delayed during market hours)</p>
-        <p className="mt-1">For paper trading only. Not financial advice.</p>
+        <p>For paper trading only. Not financial advice.</p>
       </footer>
 
       {/* Stock Chart Modal */}
