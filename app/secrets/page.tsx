@@ -214,6 +214,8 @@ export default function SecretsPage() {
   const [expandedSection, setExpandedSection] = useState<string | null>('bestPatterns');
   const [alertsData, setAlertsData] = useState<AlertsData | null>(null);
   const [alertsLoading, setAlertsLoading] = useState(true);
+  const [lastScanTime, setLastScanTime] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     // Fetch VIX and other indicators
@@ -281,21 +283,34 @@ export default function SecretsPage() {
   }, []);
 
   // Fetch morning alerts
-  useEffect(() => {
-    const fetchAlerts = async () => {
-      try {
-        const response = await fetch('/api/morning-alerts');
-        const data = await response.json();
-        setAlertsData(data);
-      } catch (error) {
-        console.error('Error fetching alerts:', error);
-      } finally {
-        setAlertsLoading(false);
-      }
-    };
+  const fetchAlerts = async (showLoading = true) => {
+    if (showLoading) setAlertsLoading(true);
+    setIsScanning(true);
+    try {
+      const response = await fetch('/api/morning-alerts', { cache: 'no-store' });
+      const data = await response.json();
+      setAlertsData(data);
+      setLastScanTime(new Date().toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }));
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+    } finally {
+      setAlertsLoading(false);
+      setIsScanning(false);
+    }
+  };
 
+  useEffect(() => {
     fetchAlerts();
   }, []);
+
+  // Manual scan handler
+  const handleManualScan = () => {
+    fetchAlerts(false);
+  };
 
   const getVixSignal = () => {
     if (!marketData.vix) return null;
@@ -408,15 +423,49 @@ export default function SecretsPage() {
 
       {/* Morning Alerts Section */}
       <div className="mb-10 p-6 bg-gradient-to-br from-blue-900/40 to-purple-900/40 rounded-xl border-2 border-blue-500">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <span>🚨</span> Morning Trade Alerts
           </h2>
-          {alertsData && (
-            <div className="text-sm text-gray-400">
-              {alertsData.date} ({alertsData.day})
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {lastScanTime && (
+              <div className="text-sm text-gray-400">
+                Last scan: {lastScanTime}
+              </div>
+            )}
+            {alertsData && (
+              <div className="text-sm text-gray-400">
+                {alertsData.date} ({alertsData.day})
+              </div>
+            )}
+            <button
+              onClick={handleManualScan}
+              disabled={isScanning}
+              className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all ${
+                isScanning
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-500 active:scale-95'
+              }`}
+            >
+              {isScanning ? (
+                <>
+                  <span className="animate-spin">⟳</span>
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <span>🔍</span>
+                  Scan Now
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Auto-scan info */}
+        <div className="text-xs text-gray-500 mb-4 flex items-center gap-2">
+          <span>⏰</span>
+          Auto-scans daily at 9:15 AM IST (Mon-Fri) before market opens
         </div>
 
         {alertsLoading ? (
