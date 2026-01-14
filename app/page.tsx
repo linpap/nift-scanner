@@ -302,12 +302,20 @@ export default function Home() {
             <h1 className="text-3xl font-bold text-emerald-400">NIFT Scanner</h1>
             <p className="text-gray-400">NSE F&O Stock Scanner for Swing Trading</p>
           </div>
-          <Link
-            href="/direct-plays"
-            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-          >
-            <span>📊</span> Direct Plays
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/direct-plays"
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <span>📊</span> Direct Plays
+            </Link>
+            <Link
+              href="/secrets"
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <span>🔮</span> Secrets
+            </Link>
+          </div>
         </div>
         <div className="flex items-center gap-4 mt-2 text-sm">
           <span className={`px-2 py-1 rounded ${isMarketOpen() ? 'bg-emerald-900 text-emerald-400' : 'bg-red-900 text-red-400'}`}>

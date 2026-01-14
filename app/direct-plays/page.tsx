@@ -249,15 +249,23 @@ export default function DirectPlaysPage() {
             Commodity-Stock Correlations & Trading Opportunities
           </p>
         </div>
-        <div className="text-right">
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
-          >
-            {loading ? 'Refreshing...' : 'Refresh'}
-          </button>
-          <p className="text-gray-500 text-xs mt-1">
+        <div className="text-right flex flex-col items-end gap-2">
+          <div className="flex gap-2">
+            <Link
+              href="/secrets"
+              className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              🔮 Secrets
+            </Link>
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
+          <p className="text-gray-500 text-xs">
             Last: {lastRefresh.toLocaleTimeString()}
           </p>
         </div>
