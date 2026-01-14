@@ -37,9 +37,6 @@ const COMMODITY_SYMBOLS: Record<string, { symbol: string; name: string; currency
   // Shipping Index (proxy)
   baltic: { symbol: 'BDIY', name: 'Baltic Dry Index', currency: 'USD' },
 
-  // Rubber - using MRF as proxy (inverse relationship)
-  rubber: { symbol: 'MRF.NS', name: 'Rubber (MRF proxy)', currency: 'INR' },
-
   // Soda Ash - using GHCL as proxy (largest Indian producer)
   sodaash: { symbol: 'GHCL.NS', name: 'Soda Ash (GHCL proxy)', currency: 'INR' },
 
@@ -48,9 +45,6 @@ const COMMODITY_SYMBOLS: Record<string, { symbol: string; name: string; currency
 
   // Cotton
   cotton: { symbol: 'CT=F', name: 'Cotton', currency: 'USD' },
-
-  // Iron Ore - using NMDC as proxy (largest Indian miner)
-  ironore: { symbol: 'NMDC.NS', name: 'Iron Ore (NMDC proxy)', currency: 'INR' },
 
   // Zinc
   zinc: { symbol: 'ZNC=F', name: 'Zinc (LME)', currency: 'USD' },
@@ -401,31 +395,11 @@ function calculateSignals(
       factor: 'Natural Gas',
       direction,
       change: natgas.changePercent,
-      beneficiaries: direction === 'up' ? ['ONGC', 'GAIL'] : ['Gujarat Gas', 'IGL', 'MGL'],
-      losers: direction === 'up' ? ['Gujarat Gas', 'IGL', 'MGL'] : [],
+      beneficiaries: direction === 'up' ? ['GAIL', 'Oil India'] : ['Gujarat Gas', 'IGL', 'MGL'],
+      losers: direction === 'up' ? ['Gujarat Gas', 'IGL', 'MGL'] : ['GAIL'],
       insight: direction === 'up'
-        ? 'CGD companies face margin pressure from higher gas costs'
-        : 'Lower gas benefits CGD companies',
-    });
-  }
-
-  // Rubber signal (using MRF as inverse proxy - MRF up = rubber costs manageable)
-  const rubber = commodities.rubber;
-  if (rubber) {
-    // MRF up means tyre companies doing well (rubber costs likely down/stable)
-    // MRF down means margin pressure (rubber costs likely up)
-    const direction = rubber.changePercent < -threshold ? 'up' : rubber.changePercent > threshold ? 'down' : 'neutral';
-    signals.push({
-      factor: 'Rubber',
-      direction,
-      change: -rubber.changePercent, // Inverse since using MRF proxy
-      beneficiaries: direction === 'down' ? ['MRF', 'Apollo Tyres', 'CEAT', 'JK Tyre'] : [],
-      losers: direction === 'up' ? ['MRF', 'Apollo Tyres', 'CEAT'] : [],
-      insight: direction === 'up'
-        ? 'Rubber = 40-50% of tyre raw material costs, margin squeeze'
-        : direction === 'down'
-        ? 'Lower rubber = better margins for tyre companies'
-        : 'Rubber stable',
+        ? 'GAIL benefits as gas marketer. CGD companies (IGL, MGL, Gujarat Gas) face margin squeeze'
+        : 'Lower gas benefits CGD companies, pressures GAIL margins',
     });
   }
 
@@ -480,24 +454,6 @@ function calculateSignals(
         : direction === 'down'
         ? 'Lower cotton = better margins for textile companies'
         : 'Cotton stable',
-    });
-  }
-
-  // Iron Ore signal
-  const ironore = commodities.ironore;
-  if (ironore) {
-    const direction = ironore.changePercent > threshold ? 'up' : ironore.changePercent < -threshold ? 'down' : 'neutral';
-    signals.push({
-      factor: 'Iron Ore',
-      direction,
-      change: ironore.changePercent,
-      beneficiaries: direction === 'up' ? ['NMDC', 'Tata Steel', 'JSW Steel'] : [],
-      losers: direction === 'down' ? ['NMDC'] : [],
-      insight: direction === 'up'
-        ? 'NMDC benefits directly, steel makers have captive mines'
-        : direction === 'down'
-        ? 'Lower iron ore pressures NMDC revenue'
-        : 'Iron ore stable',
     });
   }
 
@@ -613,13 +569,6 @@ const CORRELATION_CONFIG: Array<{
   { commodity: 'usdinr', stock: 'Infosys', stockKey: 'infy', direction: 'positive', strength: 8, passThrough: 100, description: '1% depreciation = ~1% revenue boost' },
   { commodity: 'usdinr', stock: 'Wipro', stockKey: 'wipro', direction: 'positive', strength: 7, passThrough: 90, description: '1% depreciation = ~1% revenue boost' },
 
-  // Rubber - Tyre stocks (inverse - rubber down = good for tyres)
-  { commodity: 'rubber', stock: 'MRF', stockKey: 'mrf', direction: 'negative', strength: 8, passThrough: 50, description: 'Rubber = 80%+ of raw material' },
-  { commodity: 'rubber', stock: 'Apollo Tyres', stockKey: 'apollotyres', direction: 'negative', strength: 8, passThrough: 55, description: 'Rubber = 80%+ of raw material' },
-  { commodity: 'rubber', stock: 'CEAT', stockKey: 'ceat', direction: 'negative', strength: 7, passThrough: 50, description: 'Rubber = 80%+ of raw material' },
-
-  // Natural Gas - CGD companies (inverse)
-  { commodity: 'naturalgas', stock: 'ONGC', stockKey: 'ongc', direction: 'positive', strength: 5, passThrough: 30, description: 'Gas producer benefits' },
 ];
 
 function calculateOpportunities(

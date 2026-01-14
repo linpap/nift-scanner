@@ -63,12 +63,10 @@ const CORRELATIONS = [
   { factor: 'Aluminium ↑', stocks: 'Hindalco, Nalco', direction: 'Direct LME price pass-through', type: 'positive', commodityKey: 'aluminium' },
   { factor: 'Copper ↑', stocks: 'Hind Copper, Hindalco', direction: 'Direct LME correlation', type: 'positive', commodityKey: 'copper' },
   { factor: 'Steel ↑', stocks: 'Tata Steel, JSW, SAIL', direction: 'Higher realisations boost revenue', type: 'positive', commodityKey: 'steel' },
-  { factor: 'Iron Ore ↑', stocks: 'NMDC, Tata Steel', direction: 'NMDC benefits directly', type: 'positive', commodityKey: 'ironore' },
 
   // Agri & Soft Commodities
   { factor: 'Sugar ↑', stocks: 'Balrampur, Triveni, Dhampur', direction: 'Direct revenue boost for mills', type: 'positive', commodityKey: 'sugar' },
   { factor: 'Cotton ↓', stocks: 'Vardhman, Arvind, Page', direction: '60-70% raw material cost for textiles', type: 'inverse', commodityKey: 'cotton' },
-  { factor: 'Rubber ↓', stocks: 'MRF, Apollo, CEAT', direction: '40-50% raw material is rubber', type: 'inverse', commodityKey: 'rubber' },
   { factor: 'Palm Oil ↓', stocks: 'HUL, Godrej, Marico', direction: '20-30% FMCG raw material', type: 'inverse', commodityKey: 'palmoil' },
 
   // Industrial
@@ -519,8 +517,8 @@ export default function DirectPlaysPage() {
             <h3 className="text-red-400 font-semibold mb-2">If Markets Open Red</h3>
             <ul className="text-sm text-gray-300 space-y-1">
               <li>• Crude up → Buy ONGC, Oil India (upstream)</li>
-              <li>• Rubber down → Buy tyre stocks (MRF, Apollo)</li>
-              <li>• Gas down → Buy CGD stocks (Gujarat Gas)</li>
+              <li>• Gas down → Buy CGD stocks (Gujarat Gas, IGL, MGL)</li>
+              <li>• Cotton down → Buy textile stocks (Vardhman, Page)</li>
               <li>• Watch for inverse plays</li>
             </ul>
           </div>
