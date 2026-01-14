@@ -83,9 +83,9 @@ const INDIAN_STOCKS: Record<string, { symbol: string; name: string }> = {
   berger: { symbol: 'BERGEPAINT.NS', name: 'Berger Paints' },
 };
 
-// Cache for commodity data
-const commodityCache: Map<string, { data: CommodityData; timestamp: number }> = new Map();
-const CACHE_TTL = 60 * 1000; // 1 minute cache
+// Cache for commodity data - disabled on serverless to ensure fresh data
+// const commodityCache: Map<string, { data: CommodityData; timestamp: number }> = new Map();
+// const CACHE_TTL = 60 * 1000; // 1 minute cache
 
 async function fetchYahooQuote(symbol: string): Promise<{
   price: number;
@@ -136,13 +136,6 @@ async function fetchYahooQuote(symbol: string): Promise<{
 }
 
 async function fetchCommodityData(key: string, config: { symbol: string; name: string; currency: string }): Promise<CommodityData | null> {
-  const cacheKey = key;
-  const cached = commodityCache.get(cacheKey);
-
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-
   const quote = await fetchYahooQuote(config.symbol);
 
   if (!quote) return null;
@@ -158,7 +151,6 @@ async function fetchCommodityData(key: string, config: { symbol: string; name: s
     lastUpdated: new Date().toISOString(),
   };
 
-  commodityCache.set(cacheKey, { data, timestamp: Date.now() });
   return data;
 }
 

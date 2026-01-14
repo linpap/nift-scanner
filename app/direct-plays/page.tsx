@@ -178,7 +178,11 @@ export default function DirectPlaysPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/commodities');
+      // Add cache-busting timestamp to force fresh data
+      const response = await fetch(`/api/commodities?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (!response.ok) throw new Error('Failed to fetch');
       const result = await response.json();
       setData(result);
@@ -260,13 +264,30 @@ export default function DirectPlaysPage() {
             <button
               onClick={fetchData}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+              className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${
+                loading
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-500 active:scale-95'
+              }`}
             >
-              {loading ? 'Refreshing...' : 'Refresh'}
+              {loading ? (
+                <>
+                  <span className="animate-spin">⟳</span>
+                  Fetching...
+                </>
+              ) : (
+                <>
+                  <span>🔄</span>
+                  Refresh Now
+                </>
+              )}
             </button>
           </div>
           <p className="text-gray-500 text-xs">
-            Last: {lastRefresh.toLocaleTimeString()}
+            Last fetched: {lastRefresh.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </p>
+          <p className="text-gray-600 text-xs">
+            Auto-refreshes every 2 minutes
           </p>
         </div>
       </div>
