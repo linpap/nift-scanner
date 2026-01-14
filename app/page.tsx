@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 
 // Dynamic imports for chart components to avoid SSR issues
 const StockChart = dynamic(() => import('@/components/StockChart'), { ssr: false });
@@ -296,8 +297,18 @@ export default function Home() {
     <main className="min-h-screen p-4 md:p-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-emerald-400 mb-2">NIFT Scanner</h1>
-        <p className="text-gray-400">NSE F&O Stock Scanner for Swing Trading</p>
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <h1 className="text-3xl font-bold text-emerald-400">NIFT Scanner</h1>
+            <p className="text-gray-400">NSE F&O Stock Scanner for Swing Trading</p>
+          </div>
+          <Link
+            href="/direct-plays"
+            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <span>📊</span> Direct Plays
+          </Link>
+        </div>
         <div className="flex items-center gap-4 mt-2 text-sm">
           <span className={`px-2 py-1 rounded ${isMarketOpen() ? 'bg-emerald-900 text-emerald-400' : 'bg-red-900 text-red-400'}`}>
             Market {isMarketOpen() ? 'Open' : 'Closed'}
