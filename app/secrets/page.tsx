@@ -18,7 +18,7 @@ const SECRETS = {
     title: '🚀 Momentum Continuation Secret',
     description: 'Winners keep winning for 6-12 months',
     patterns: [
-      { rule: 'Stocks up >20% in 3 months', action: 'Continue to outperform for next 6-12 months', confidence: 75, source: 'Academic research on Indian markets' },
+      { rule: 'Stocks up more than 20% in 3 months', action: 'Continue to outperform for next 6-12 months', confidence: 75, source: 'Academic research on Indian markets' },
       { rule: 'Weekly momentum winners', action: 'Generate significant positive returns in following weeks', confidence: 70, source: 'SSRN Weekly Momentum Study' },
       { rule: '52-week high breakout', action: '65% probability of continuing higher for 1-3 months', confidence: 65, source: 'Technical analysis studies' },
     ],
@@ -40,7 +40,7 @@ const SECRETS = {
       { rule: 'VIX spikes above 20', action: 'Market correction likely, shift to large-caps', confidence: 80, source: 'Motilal Oswal VIX study' },
       { rule: 'Nifty falls 5%+', action: 'VIX shoots up ~9.3% on average', confidence: 85, source: 'Historical data analysis' },
       { rule: 'Nifty rises 5%+', action: 'VIX drops only ~1.5% (asymmetric!)', confidence: 80, source: 'VIX behavior study' },
-      { rule: 'VIX hits extreme (>50)', action: 'Best time to buy - market rebounds 50-80% in 12 months', confidence: 90, source: '2008 & 2020 crash data' },
+      { rule: 'VIX hits extreme (above 50)', action: 'Best time to buy - market rebounds 50-80% in 12 months', confidence: 90, source: '2008 & 2020 crash data' },
       { rule: 'VIX mean reverts', action: 'Extreme VIX levels (high/low) don\'t persist long', confidence: 85, source: 'Statistical analysis' },
     ],
   },
@@ -181,12 +181,13 @@ export default function SecretsPage() {
         const giftData = await giftResponse.json();
         const giftResult = giftData.chart?.result?.[0];
         if (giftResult) {
-          const price = giftResult.meta?.regularMarketPrice || 0;
-          const prev = giftResult.meta?.chartPreviousClose || price;
-          setMarketData(prev => ({
-            ...prev,
-            giftNifty: price,
-            giftNiftyChange: ((price - prev) / prev) * 100,
+          const niftyPrice = giftResult.meta?.regularMarketPrice || 0;
+          const niftyPrev = giftResult.meta?.chartPreviousClose || niftyPrice;
+          const niftyChange = niftyPrev ? ((niftyPrice - niftyPrev) / niftyPrev) * 100 : 0;
+          setMarketData(prevData => ({
+            ...prevData,
+            giftNifty: niftyPrice,
+            giftNiftyChange: niftyChange,
           }));
         }
 
@@ -198,11 +199,12 @@ export default function SecretsPage() {
         const dowData = await dowResponse.json();
         const dowResult = dowData.chart?.result?.[0];
         if (dowResult) {
-          const price = dowResult.meta?.regularMarketPrice || 0;
-          const prev = dowResult.meta?.chartPreviousClose || price;
-          setMarketData(prev => ({
-            ...prev,
-            dowChange: ((price - prev) / prev) * 100,
+          const dowPrice = dowResult.meta?.regularMarketPrice || 0;
+          const dowPrev = dowResult.meta?.chartPreviousClose || dowPrice;
+          const dowChangeVal = dowPrev ? ((dowPrice - dowPrev) / dowPrev) * 100 : 0;
+          setMarketData(prevData => ({
+            ...prevData,
+            dowChange: dowChangeVal,
           }));
         }
       } catch (error) {
@@ -409,7 +411,7 @@ export default function SecretsPage() {
         <h2 className="text-xl font-bold mb-4 text-green-400">🎯 Highest Confidence Patterns (80%+)</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="font-semibold text-yellow-400">VIX extreme (>50) = Buy signal</div>
+            <div className="font-semibold text-yellow-400">VIX extreme (&gt;50) = Buy signal</div>
             <div className="text-sm text-gray-400">Market rebounds 50-80% within 12 months after extreme fear</div>
           </div>
           <div className="p-3 bg-gray-800 rounded-lg">
