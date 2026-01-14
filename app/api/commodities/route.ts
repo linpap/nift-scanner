@@ -37,8 +37,8 @@ const COMMODITY_SYMBOLS: Record<string, { symbol: string; name: string; currency
   // Shipping Index (proxy)
   baltic: { symbol: 'BDIY', name: 'Baltic Dry Index', currency: 'USD' },
 
-  // Rubber futures
-  rubber: { symbol: 'RBB=F', name: 'Rubber (RSS3)', currency: 'USD' },
+  // Rubber - using MRF as proxy (inverse relationship)
+  rubber: { symbol: 'MRF.NS', name: 'Rubber (MRF proxy)', currency: 'INR' },
 
   // Soda Ash - using GHCL as proxy (largest Indian producer)
   sodaash: { symbol: 'GHCL.NS', name: 'Soda Ash (GHCL proxy)', currency: 'INR' },
@@ -49,8 +49,8 @@ const COMMODITY_SYMBOLS: Record<string, { symbol: string; name: string; currency
   // Cotton
   cotton: { symbol: 'CT=F', name: 'Cotton', currency: 'USD' },
 
-  // Iron Ore
-  ironore: { symbol: 'TIO=F', name: 'Iron Ore', currency: 'USD' },
+  // Iron Ore - using NMDC as proxy (largest Indian miner)
+  ironore: { symbol: 'NMDC.NS', name: 'Iron Ore (NMDC proxy)', currency: 'INR' },
 
   // Zinc
   zinc: { symbol: 'ZNC=F', name: 'Zinc (LME)', currency: 'USD' },
@@ -409,14 +409,16 @@ function calculateSignals(
     });
   }
 
-  // Rubber signal
+  // Rubber signal (using MRF as inverse proxy - MRF up = rubber costs manageable)
   const rubber = commodities.rubber;
   if (rubber) {
-    const direction = rubber.changePercent > threshold ? 'up' : rubber.changePercent < -threshold ? 'down' : 'neutral';
+    // MRF up means tyre companies doing well (rubber costs likely down/stable)
+    // MRF down means margin pressure (rubber costs likely up)
+    const direction = rubber.changePercent < -threshold ? 'up' : rubber.changePercent > threshold ? 'down' : 'neutral';
     signals.push({
-      factor: 'Rubber (RSS3)',
+      factor: 'Rubber',
       direction,
-      change: rubber.changePercent,
+      change: -rubber.changePercent, // Inverse since using MRF proxy
       beneficiaries: direction === 'down' ? ['MRF', 'Apollo Tyres', 'CEAT', 'JK Tyre'] : [],
       losers: direction === 'up' ? ['MRF', 'Apollo Tyres', 'CEAT'] : [],
       insight: direction === 'up'
