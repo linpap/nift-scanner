@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 interface MarketData {
@@ -283,7 +283,7 @@ export default function SecretsPage() {
   }, []);
 
   // Fetch morning alerts
-  const fetchAlerts = async (showLoading = true) => {
+  const fetchAlerts = useCallback(async (showLoading = true) => {
     if (showLoading) setAlertsLoading(true);
     setIsScanning(true);
     try {
@@ -301,11 +301,11 @@ export default function SecretsPage() {
       setAlertsLoading(false);
       setIsScanning(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAlerts();
-  }, []);
+  }, [fetchAlerts]);
 
   // Manual scan handler
   const handleManualScan = () => {
