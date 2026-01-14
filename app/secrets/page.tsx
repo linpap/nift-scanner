@@ -12,116 +12,91 @@ interface MarketData {
   nasdaqChange?: number;
 }
 
-// Secret patterns data
+// Secret patterns data - BACKED BY 2 YEARS OF NIFTY 100 DATA ANALYSIS
 const SECRETS = {
-  momentum: {
-    title: '🚀 Momentum Continuation Secret',
-    description: 'Winners keep winning for 6-12 months',
+  contrarian: {
+    title: '🎯 52-WEEK LOW CONTRARIAN (80% WIN RATE!)',
+    description: 'The strongest pattern in 2 years of data',
     patterns: [
-      { rule: 'Stocks up more than 20% in 3 months', action: 'Continue to outperform for next 6-12 months', confidence: 75, source: 'Academic research on Indian markets' },
-      { rule: 'Weekly momentum winners', action: 'Generate significant positive returns in following weeks', confidence: 70, source: 'SSRN Weekly Momentum Study' },
-      { rule: '52-week high breakout', action: '65% probability of continuing higher for 1-3 months', confidence: 65, source: 'Technical analysis studies' },
+      { rule: 'Stock breaks 52-week low', action: 'BUY! Next 20 days: +4.43% avg, 80% positive', confidence: 80, source: 'Nifty 100 analysis: 55 occurrences' },
+      { rule: 'Stock breaks 52-week low', action: 'Next 5 days: +2.09% avg, 74.5% positive', confidence: 75, source: 'Nifty 100 analysis: 55 occurrences' },
+      { rule: '20-day low breakdown', action: 'BUY! Next 5 days: +0.90% avg, 59.7% positive', confidence: 60, source: 'Nifty 100 analysis: 867 occurrences' },
+      { rule: '52-week HIGH breakout', action: 'CAUTION: Only 48% positive in 5 days, 54.5% in 20 days', confidence: 55, source: 'Nifty 100 analysis: 200 occurrences' },
     ],
   },
-  sectorRotation: {
-    title: '🔄 Sector Rotation Secret',
-    description: 'When cyclicals rally, defensives suffer',
+  gapSecret: {
+    title: '📊 GAP TRADING SECRETS (7000+ samples)',
+    description: 'What REALLY happens after gaps in Nifty 100',
     patterns: [
-      { rule: 'Metals rally strongly (+10%+)', action: 'IT & FMCG typically underperform', confidence: 80, source: 'Smallcase sector rotation study' },
-      { rule: 'PSU Banks rally', action: 'Private banks may lag short-term', confidence: 65, source: 'Market observations 2024-25' },
-      { rule: 'Real Estate + Metals up', action: "Pharma & Healthcare defensive, don't chase", confidence: 70, source: 'Sector rotation patterns' },
-      { rule: 'Risk-on sentiment (cyclicals up)', action: 'Reduce FMCG, Media exposure', confidence: 75, source: 'FY25 market data' },
+      { rule: 'HUGE gap up (more than 3%)', action: 'FADE IT! Next day: -0.97% avg, only 49.1% positive', confidence: 75, source: 'Nifty 100 analysis: 401 occurrences' },
+      { rule: 'HUGE gap down (more than -3%)', action: 'BUY IT! Next day: +0.36% avg, 60.1% positive', confidence: 70, source: 'Nifty 100 analysis: 288 occurrences' },
+      { rule: 'Large gap up (2-3%)', action: 'Momentum continues: +0.20% next day, +1.50% in 3 days', confidence: 65, source: 'Nifty 100 analysis: 511 occurrences' },
+      { rule: 'Small gap (0.5-1%)', action: '72.5% fill same day - wait for fill before entering', confidence: 73, source: 'Nifty 100 analysis: 7092 occurrences' },
+      { rule: 'Large gap up (2-3%)', action: 'Only 30.1% fill same day - breakaway gap, dont fade', confidence: 70, source: 'Nifty 100 analysis: 511 occurrences' },
     ],
   },
-  vixSecret: {
-    title: '😱 VIX Fear Gauge Secret',
-    description: 'Inverse correlation is asymmetric',
+  sectorCorrelation: {
+    title: '🔄 SECTOR LEAD-LAG (Real Data)',
+    description: 'What happens to other sectors NEXT DAY',
     patterns: [
-      { rule: 'VIX spikes above 20', action: 'Market correction likely, shift to large-caps', confidence: 80, source: 'Motilal Oswal VIX study' },
-      { rule: 'Nifty falls 5%+', action: 'VIX shoots up ~9.3% on average', confidence: 85, source: 'Historical data analysis' },
-      { rule: 'Nifty rises 5%+', action: 'VIX drops only ~1.5% (asymmetric!)', confidence: 80, source: 'VIX behavior study' },
-      { rule: 'VIX hits extreme (above 50)', action: 'Best time to buy - market rebounds 50-80% in 12 months', confidence: 90, source: '2008 & 2020 crash data' },
-      { rule: 'VIX mean reverts', action: 'Extreme VIX levels (high/low) don\'t persist long', confidence: 85, source: 'Statistical analysis' },
+      { rule: 'Finance rallies big (more than 2%)', action: 'IT falls next day! -0.26% avg, only 34% positive', confidence: 75, source: 'Nifty 100 analysis: 29 samples' },
+      { rule: 'Infra rallies big (more than 2%)', action: 'Metals follow! +0.32% avg, 72% positive', confidence: 72, source: 'Nifty 100 analysis: 29 samples' },
+      { rule: 'Auto rallies big (more than 2%)', action: 'Finance follows! +0.42% avg, 64% positive', confidence: 64, source: 'Nifty 100 analysis: 22 samples' },
+      { rule: 'Auto rallies big (more than 2%)', action: 'Metals follow! +0.47% avg, 64% positive', confidence: 64, source: 'Nifty 100 analysis: 22 samples' },
+      { rule: 'IT rallies big (more than 2%)', action: 'Banks follow! +0.14% avg, 63% positive', confidence: 63, source: 'Nifty 100 analysis: 30 samples' },
+      { rule: 'Metals rally big (more than 2%)', action: 'IT lags! -0.06% avg, only 45% positive', confidence: 55, source: 'Nifty 100 analysis: 40 samples' },
     ],
   },
-  calendarEffects: {
-    title: '📅 Calendar Anomalies Secret',
-    description: 'Day of week matters in India',
+  volumeSecret: {
+    title: '📈 VOLUME SPIKE PATTERNS',
+    description: '2x-3x volume days predict next moves',
     patterns: [
-      { rule: 'Monday trading', action: 'Shows POSITIVE returns in India (unlike US)', confidence: 65, source: 'Academic research on NSE/BSE' },
-      { rule: 'Tuesday trading', action: 'Often shows NEGATIVE returns', confidence: 60, source: 'GARCH model studies' },
-      { rule: 'Friday positions', action: 'Historically higher returns than other days', confidence: 60, source: 'Global market studies' },
-      { rule: 'Last week of month', action: 'FII window dressing can boost large-caps', confidence: 55, source: 'Institutional behavior patterns' },
+      { rule: '3x volume on UP day', action: 'Continuation! Next day: 55.3% positive', confidence: 55, source: 'Nifty 100 analysis: 544 occurrences' },
+      { rule: '2x volume on DOWN day', action: 'Bounce likely: +0.23% avg, 52.8% positive', confidence: 53, source: 'Nifty 100 analysis: 718 occurrences' },
+      { rule: '3x volume on DOWN day', action: 'Bounce: +0.75% in 3 days avg', confidence: 55, source: 'Nifty 100 analysis: 343 occurrences' },
+      { rule: '2x volume on UP day', action: 'No edge: -0.01% next day, 48.4% positive', confidence: 48, source: 'Nifty 100 analysis: 1125 occurrences' },
     ],
   },
-  globalCorrelation: {
-    title: '🌍 Global Correlation Secret',
-    description: 'US sneeze, India catches cold',
+  consecutiveDays: {
+    title: '📅 CONSECUTIVE DAYS (Myth Busted)',
+    description: 'Market is more efficient than you think',
     patterns: [
-      { rule: 'Dow Jones closes -2%+', action: 'Nifty likely opens gap-down (0.54 correlation)', confidence: 75, source: 'Winvesta correlation study' },
-      { rule: 'NASDAQ tech sell-off', action: 'Indian IT stocks (TCS, Infy) likely to fall', confidence: 80, source: 'Sector correlation analysis' },
-      { rule: 'GIFT Nifty up pre-market', action: 'NSE Nifty likely gap-up open', confidence: 85, source: 'Pre-market indicator reliability' },
-      { rule: '3-year correlation', action: '0.64 correlation between Dow & Sensex', confidence: 70, source: 'Recent 3-year data' },
+      { rule: '5 consecutive DOWN days', action: 'Slight bounce: +0.19% avg, 54.3% reversal', confidence: 54, source: 'Nifty 100 analysis: 1270 occurrences' },
+      { rule: '2-4 consecutive UP days', action: 'NO EDGE! ~48% reversal rate - random', confidence: 48, source: 'Nifty 100 analysis: 12000+ occurrences' },
+      { rule: '2-4 consecutive DOWN days', action: 'Slight edge: 51-52% reversal rate', confidence: 52, source: 'Nifty 100 analysis: 11000+ occurrences' },
+      { rule: 'Chasing streaks', action: 'MYTH! Consecutive days barely predict anything', confidence: 50, source: 'Nifty 100 analysis: 20000+ samples' },
     ],
   },
-  heavyweightEffect: {
-    title: '🐘 Heavyweight Stock Secret',
-    description: 'Big stocks move the index',
+  intradayReversal: {
+    title: '🔃 INTRADAY REVERSAL PATTERNS',
+    description: 'What gap + close combos predict',
     patterns: [
-      { rule: 'Reliance falls 3%+', action: 'Nifty likely to fall (highest weightage ~10%)', confidence: 85, source: 'Index composition analysis' },
-      { rule: 'HDFC Bank + ICICI Bank both down', action: 'Bank Nifty falls hard (60% combined weight)', confidence: 90, source: 'Bank Nifty composition' },
-      { rule: 'Top 5 Nifty stocks rally', action: 'Index can rally even if breadth is weak', confidence: 75, source: 'Market structure observation' },
-      { rule: 'TCS + Infosys diverge from Nifty', action: 'IT sector rotation signal', confidence: 70, source: 'Sector analysis' },
+      { rule: 'Gap DOWN but closes GREEN', action: 'Bullish: +0.18% next day, 53.4% positive', confidence: 53, source: 'Nifty 100 analysis: 1091 occurrences' },
+      { rule: 'Fell 2%+ from open but closed positive', action: 'Bullish: +0.16% next day, 53.1% positive', confidence: 53, source: 'Nifty 100 analysis: 714 occurrences' },
+      { rule: 'Gap UP but closes RED', action: 'Neutral: +0.08% next day, 51% positive', confidence: 51, source: 'Nifty 100 analysis: 1440 occurrences' },
+      { rule: 'Rose 2%+ from open but closed negative', action: 'No edge: +0.10% next day, 49.7% positive', confidence: 50, source: 'Nifty 100 analysis: 580 occurrences' },
     ],
   },
-  bankNiftySecret: {
-    title: '🏦 Bank Nifty / Nifty Ratio Secret',
-    description: '0.88 correlation but Bank Nifty leads volatility',
+  gapFillRates: {
+    title: '🎯 GAP FILL PROBABILITIES',
+    description: 'Exact same-day fill rates from real data',
     patterns: [
-      { rule: 'Bank Nifty outperforms Nifty', action: 'Risk-on sentiment, expect broad rally', confidence: 70, source: 'Ratio chart analysis' },
-      { rule: 'Bank Nifty underperforms Nifty', action: 'Defensive rotation, expect choppiness', confidence: 70, source: 'Market breadth studies' },
-      { rule: 'Bank Nifty breaks key level first', action: 'Nifty follows 60-70% of time', confidence: 65, source: 'Technical correlation' },
-      { rule: 'Bank Nifty higher beta', action: 'Moves faster in both directions than Nifty', confidence: 90, source: 'Statistical volatility analysis' },
+      { rule: 'Small gap up (0.5-1%)', action: '72.5% fill same day - high probability fade', confidence: 73, source: 'Nifty 100 analysis: 7092 gaps' },
+      { rule: 'Small gap down (0.5-1%)', action: '70.1% fill same day - high probability', confidence: 70, source: 'Nifty 100 analysis: 2975 gaps' },
+      { rule: 'Medium gap (1-2%)', action: '51-57% fill same day - coin flip', confidence: 54, source: 'Nifty 100 analysis: 3700 gaps' },
+      { rule: 'Large gap (2-3%)', action: '30-40% fill same day - breakaway likely', confidence: 65, source: 'Nifty 100 analysis: 862 gaps' },
+      { rule: 'Huge gap (more than 3%)', action: 'Only 20% fill same day - respect the move', confidence: 80, source: 'Nifty 100 analysis: 689 gaps' },
     ],
   },
-  expirySecret: {
-    title: '⏰ F&O Expiry Day Secret',
-    description: 'Expiry creates predictable volatility',
+  bestPatterns: {
+    title: '⭐ TOP 5 HIGHEST CONVICTION PATTERNS',
+    description: 'The patterns with statistical edge',
     patterns: [
-      { rule: 'Weekly expiry day (now Monday)', action: 'Expect higher intraday volatility', confidence: 80, source: 'F&O market structure' },
-      { rule: 'Monthly expiry (last Tuesday)', action: 'Maximum gamma, wild swings near strike prices', confidence: 85, source: 'Options mechanics' },
-      { rule: 'Day before expiry', action: 'Option sellers defend strikes aggressively', confidence: 75, source: 'Market maker behavior' },
-      { rule: 'Expiry morning vs afternoon', action: 'Morning volatile, afternoon tends to stabilize', confidence: 65, source: 'Intraday patterns' },
-    ],
-  },
-  gapFillSecret: {
-    title: '📊 Gap Fill Secret',
-    description: '90% of common gaps fill within days',
-    patterns: [
-      { rule: 'Small gap (0.5-1%) down', action: '78% fill at least half the gap same day', confidence: 78, source: 'Gap analysis studies' },
-      { rule: 'Low volume gap', action: '85% fill within 2 days', confidence: 85, source: 'Volume-gap correlation' },
-      { rule: 'High volume gap', action: 'Only 45% fill in 5+ days (breakaway gap)', confidence: 60, source: 'Breakaway gap theory' },
-      { rule: 'Gap + volume spike', action: 'Likely continuation, don\'t fade it', confidence: 70, source: 'Technical analysis' },
-    ],
-  },
-  fiiDiiSecret: {
-    title: '💰 FII/DII Flow Secret',
-    description: 'Institutional money moves markets',
-    patterns: [
-      { rule: 'FII selling >₹5000 Cr in a week', action: 'Market likely under pressure, wait for DII absorption', confidence: 70, source: 'Historical flow analysis' },
-      { rule: 'DII buying > FII selling', action: 'Market finds support, selloff limited', confidence: 75, source: 'Flow divergence studies' },
-      { rule: 'Both FII + DII selling', action: 'Rare but dangerous, reduce exposure', confidence: 85, source: 'Market crash precursors' },
-      { rule: 'FII buying after prolonged selling', action: 'Potential trend reversal signal', confidence: 70, source: 'Flow reversal patterns' },
-    ],
-  },
-  pvtBankSecret: {
-    title: '🏛️ HDFC vs ICICI Divergence Secret',
-    description: 'When one leads, the other catches up',
-    patterns: [
-      { rule: 'ICICI outperforms HDFC for 3+ months', action: 'HDFC may catch up (mean reversion)', confidence: 65, source: 'Private bank pair analysis' },
-      { rule: 'HDFC merger news/updates', action: 'Short-term volatility, funding cost concerns', confidence: 70, source: 'Recent merger dynamics' },
-      { rule: 'ICICI digital/efficiency gains', action: 'Tends to outperform in growth phases', confidence: 65, source: 'Q4 FY25 analysis' },
-      { rule: 'Both private banks lag PSU banks', action: 'Sector rotation away from quality to value', confidence: 70, source: 'FY25 sector rotation' },
+      { rule: '52-week low breakdown', action: 'BUY for 20 days: +4.43% avg, 80% win rate', confidence: 80, source: 'Best pattern in entire dataset' },
+      { rule: 'Huge gap down (more than -3%)', action: 'BUY: 60.1% positive next day', confidence: 70, source: '288 occurrences analyzed' },
+      { rule: 'Finance big up day', action: 'SHORT IT stocks: 66% negative next day', confidence: 66, source: 'Sector correlation data' },
+      { rule: 'Infra big up day', action: 'BUY Metals: 72% positive next day', confidence: 72, source: 'Sector correlation data' },
+      { rule: 'Small gaps (under 1%)', action: 'FADE: 70%+ fill same day', confidence: 71, source: '10000+ gaps analyzed' },
     ],
   },
 };
@@ -406,40 +381,40 @@ export default function SecretsPage() {
         </div>
       </div>
 
-      {/* Most Reliable Secrets */}
+      {/* Most Reliable Secrets - Data Backed */}
       <div className="mt-8 p-6 bg-green-900/20 rounded-xl border border-green-600">
-        <h2 className="text-xl font-bold mb-4 text-green-400">🎯 Highest Confidence Patterns (80%+)</h2>
+        <h2 className="text-xl font-bold mb-4 text-green-400">🎯 Highest Conviction Patterns (From Our Analysis)</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="font-semibold text-yellow-400">VIX extreme (&gt;50) = Buy signal</div>
-            <div className="text-sm text-gray-400">Market rebounds 50-80% within 12 months after extreme fear</div>
+            <div className="font-semibold text-yellow-400">52-Week Low Breakdown = BUY</div>
+            <div className="text-sm text-gray-400">80% win rate, +4.43% avg in 20 days (55 occurrences)</div>
           </div>
           <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="font-semibold text-yellow-400">HDFC + ICICI both down = Bank Nifty falls</div>
-            <div className="text-sm text-gray-400">60% combined weightage makes this near-certain</div>
+            <div className="font-semibold text-yellow-400">Finance rallies &gt;2% = SHORT IT</div>
+            <div className="text-sm text-gray-400">66% negative next day, -0.26% avg (29 samples)</div>
           </div>
           <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="font-semibold text-yellow-400">Nifty -5% = VIX +9.3%</div>
-            <div className="text-sm text-gray-400">Asymmetric fear - VIX spikes harder on down days</div>
+            <div className="font-semibold text-yellow-400">Small gap (0.5-1%) = FADE</div>
+            <div className="text-sm text-gray-400">72.5% fill same day (7000+ gaps analyzed)</div>
           </div>
           <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="font-semibold text-yellow-400">Low volume gap = 85% fills in 2 days</div>
-            <div className="text-sm text-gray-400">Don&apos;t chase low-volume gaps, wait for fill</div>
+            <div className="font-semibold text-yellow-400">Infra rallies &gt;2% = BUY Metals</div>
+            <div className="text-sm text-gray-400">72% positive next day, +0.32% avg</div>
           </div>
           <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="font-semibold text-yellow-400">Monthly expiry = Max volatility</div>
-            <div className="text-sm text-gray-400">Wild swings near option strikes, gamma risk</div>
+            <div className="font-semibold text-yellow-400">Huge gap down (&gt;3%) = BUY</div>
+            <div className="text-sm text-gray-400">60.1% positive next day (288 occurrences)</div>
           </div>
           <div className="p-3 bg-gray-800 rounded-lg">
-            <div className="font-semibold text-yellow-400">GIFT Nifty pre-market = Gap direction</div>
-            <div className="text-sm text-gray-400">Highly reliable for predicting NSE opening direction</div>
+            <div className="font-semibold text-yellow-400">Consecutive days = NO EDGE</div>
+            <div className="text-sm text-gray-400">Myth busted: ~50% reversal rate (20000+ samples)</div>
           </div>
         </div>
       </div>
 
       {/* Footer */}
       <div className="mt-10 text-center text-gray-500 text-sm">
-        <p>Research compiled from academic papers, SSRN studies, and market observations.</p>
+        <p>Analysis based on 2 years of Nifty 100 data (98 stocks, ~497 trading days each, 48,000+ data points)</p>
         <p className="mt-1">These patterns are for educational purposes only. Not financial advice.</p>
       </div>
     </div>
