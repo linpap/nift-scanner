@@ -12,6 +12,29 @@ interface MarketData {
   nasdaqChange?: number;
 }
 
+interface Alert {
+  type: 'BUY' | 'SELL' | 'AVOID' | 'WATCH';
+  stock: string;
+  action: string;
+  logic: string;
+  confidence: number;
+  pattern: string;
+  expectedReturn?: string;
+}
+
+interface AlertsData {
+  success: boolean;
+  date: string;
+  day: string;
+  alerts: Alert[];
+  summary: {
+    buyAlerts: number;
+    sellAlerts: number;
+    avoidAlerts: number;
+    watchAlerts: number;
+  };
+}
+
 // Secret patterns data - BACKED BY 2 YEARS OF NIFTY 100 DATA ANALYSIS
 const SECRETS = {
   contrarian: {
@@ -99,6 +122,69 @@ const SECRETS = {
       { rule: 'Small gaps (under 1%)', action: 'FADE: 70%+ fill same day', confidence: 71, source: '10000+ gaps analyzed' },
     ],
   },
+  stockBounce: {
+    title: '🔄 BEST BOUNCE STOCKS (After -3% Day)',
+    description: 'These stocks bounce back most reliably after big drops',
+    patterns: [
+      { rule: 'BHARTIARTL falls -3%+', action: 'BUY! 83% positive next day, +1.63% avg', confidence: 83, source: 'Stock-specific analysis' },
+      { rule: 'AXISBANK falls -3%+', action: 'BUY! 83% positive next day, +1.12% avg', confidence: 83, source: 'Stock-specific analysis' },
+      { rule: 'SBIN falls -3%+', action: 'BUY! 83% positive next day, +0.92% avg', confidence: 83, source: 'Stock-specific analysis' },
+      { rule: 'SBILIFE falls -3%+', action: 'BUY! 83% positive next day, +1.38% avg', confidence: 83, source: 'Stock-specific analysis' },
+      { rule: 'GRASIM falls -3%+', action: 'BUY! 80% positive next day, +1.12% avg', confidence: 80, source: 'Stock-specific analysis' },
+      { rule: 'NTPC falls -3%+', action: 'BUY! 75% positive next day, +1.11% avg', confidence: 75, source: 'Stock-specific analysis' },
+    ],
+  },
+  meanReversion: {
+    title: '📉 MEAN REVERSION KINGS (After -10% in 5 days)',
+    description: 'Buy these when they crash - they always bounce back',
+    patterns: [
+      { rule: 'ADANIENT falls -10% in 5 days', action: 'BUY! 100% bounce rate, +8.8% avg recovery', confidence: 90, source: 'Mean reversion analysis' },
+      { rule: 'HINDALCO falls -10% in 5 days', action: 'BUY! 90% bounce rate, +3.5% avg recovery', confidence: 85, source: 'Mean reversion analysis' },
+      { rule: 'INDUSINDBK falls -10% in 5 days', action: 'BUY! 75% bounce rate, +1.7% avg recovery', confidence: 75, source: 'Mean reversion analysis' },
+    ],
+  },
+  pairTrading: {
+    title: '🔗 PAIR TRADING SECRETS',
+    description: 'When one rallies, what happens to its peer?',
+    patterns: [
+      { rule: 'HDFCBANK rallies more than 2%', action: 'BUY ICICIBANK! 81% positive next day, +0.39% avg', confidence: 81, source: 'Pair correlation analysis' },
+      { rule: 'HINDALCO rallies more than 2%', action: 'BUY VEDANTA! 68% positive next day, +0.65% avg', confidence: 68, source: 'Pair correlation analysis' },
+      { rule: 'TCS rallies more than 2%', action: 'AVOID INFY! Only 33% positive next day, -0.13% avg', confidence: 67, source: 'Pair correlation analysis' },
+      { rule: 'SUNPHARMA rallies more than 2%', action: 'AVOID CIPLA! Only 41% positive next day, -0.23% avg', confidence: 59, source: 'Pair correlation analysis' },
+    ],
+  },
+  gapFillStocks: {
+    title: '🎯 STOCK-SPECIFIC GAP FILL RATES',
+    description: 'Which stocks to fade gaps vs ride momentum',
+    patterns: [
+      { rule: 'SUNPHARMA gaps 0.5-2%', action: 'FADE IT! 70% fill same day', confidence: 70, source: 'Gap analysis: 121 gaps' },
+      { rule: 'MARUTI gaps 0.5-2%', action: 'FADE IT! 70% fill same day', confidence: 70, source: 'Gap analysis: 97 gaps' },
+      { rule: 'TITAN gaps 0.5-2%', action: 'FADE IT! 68% fill same day', confidence: 68, source: 'Gap analysis: 106 gaps' },
+      { rule: 'INFOSYS gaps 0.5-2%', action: 'DONT FADE! Only 42% fill - ride momentum', confidence: 70, source: 'Gap analysis: 182 gaps' },
+      { rule: 'RELIANCE gaps 0.5-2%', action: 'DONT FADE! Only 51% fill - breakaway likely', confidence: 65, source: 'Gap analysis: 131 gaps' },
+      { rule: 'TCS gaps 0.5-2%', action: 'DONT FADE! Only 54% fill - trend continues', confidence: 65, source: 'Gap analysis: 134 gaps' },
+    ],
+  },
+  volumeSpike: {
+    title: '📊 VOLUME SPIKE STOCK SECRETS',
+    description: 'What to do after 2x volume days',
+    patterns: [
+      { rule: 'M&M 2x volume on UP day', action: 'BUY MORE! +1.69% avg next day', confidence: 70, source: 'Volume spike analysis' },
+      { rule: 'RELIANCE 2x volume on UP day', action: 'BUY MORE! +1.07% avg next day', confidence: 65, source: 'Volume spike analysis' },
+      { rule: 'ADANIENT 2x volume on DOWN day', action: 'BUY (capitulation)! +1.79% avg next day', confidence: 70, source: 'Volume spike analysis' },
+      { rule: 'NTPC 2x volume on DOWN day', action: 'BUY (capitulation)! +1.73% avg next day', confidence: 70, source: 'Volume spike analysis' },
+      { rule: 'HINDALCO 2x volume on DOWN day', action: 'BUY (capitulation)! +1.59% avg next day', confidence: 68, source: 'Volume spike analysis' },
+    ],
+  },
+  mondayEffect: {
+    title: '📅 MONDAY EFFECT BY STOCK',
+    description: 'Which stocks to avoid/prefer on Mondays',
+    patterns: [
+      { rule: 'TCS on Monday', action: 'AVOID! Only 40.8% win rate on Mondays', confidence: 60, source: 'Day-of-week analysis' },
+      { rule: 'ITC on Monday', action: 'AVOID! Only 44.9% win rate on Mondays', confidence: 55, source: 'Day-of-week analysis' },
+      { rule: 'DABUR on Monday', action: 'AVOID! Only 43.9% win rate on Mondays', confidence: 56, source: 'Day-of-week analysis' },
+    ],
+  },
 };
 
 // Confidence meter component
@@ -125,7 +211,9 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
 export default function SecretsPage() {
   const [marketData, setMarketData] = useState<MarketData>({});
   const [loading, setLoading] = useState(true);
-  const [expandedSection, setExpandedSection] = useState<string | null>('momentum');
+  const [expandedSection, setExpandedSection] = useState<string | null>('bestPatterns');
+  const [alertsData, setAlertsData] = useState<AlertsData | null>(null);
+  const [alertsLoading, setAlertsLoading] = useState(true);
 
   useEffect(() => {
     // Fetch VIX and other indicators
@@ -190,6 +278,23 @@ export default function SecretsPage() {
     };
 
     fetchMarketData();
+  }, []);
+
+  // Fetch morning alerts
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const response = await fetch('/api/morning-alerts');
+        const data = await response.json();
+        setAlertsData(data);
+      } catch (error) {
+        console.error('Error fetching alerts:', error);
+      } finally {
+        setAlertsLoading(false);
+      }
+    };
+
+    fetchAlerts();
   }, []);
 
   const getVixSignal = () => {
@@ -299,6 +404,117 @@ export default function SecretsPage() {
           These patterns are based on historical data and research studies. Past performance doesn&apos;t guarantee future results.
           Markets evolve, correlations break down, and anomalies can disappear once widely known. Use as one input among many.
         </p>
+      </div>
+
+      {/* Morning Alerts Section */}
+      <div className="mb-10 p-6 bg-gradient-to-br from-blue-900/40 to-purple-900/40 rounded-xl border-2 border-blue-500">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <span>🚨</span> Morning Trade Alerts
+          </h2>
+          {alertsData && (
+            <div className="text-sm text-gray-400">
+              {alertsData.date} ({alertsData.day})
+            </div>
+          )}
+        </div>
+
+        {alertsLoading ? (
+          <div className="text-center py-8 text-gray-400">
+            <div className="animate-pulse">Analyzing 35 stocks for patterns...</div>
+          </div>
+        ) : alertsData && alertsData.alerts.length > 0 ? (
+          <>
+            {/* Summary */}
+            <div className="grid grid-cols-4 gap-3 mb-6">
+              <div className="bg-green-900/30 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-green-400">{alertsData.summary.buyAlerts}</div>
+                <div className="text-xs text-gray-400">BUY Signals</div>
+              </div>
+              <div className="bg-red-900/30 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-red-400">{alertsData.summary.sellAlerts}</div>
+                <div className="text-xs text-gray-400">SELL Signals</div>
+              </div>
+              <div className="bg-yellow-900/30 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-yellow-400">{alertsData.summary.avoidAlerts}</div>
+                <div className="text-xs text-gray-400">AVOID</div>
+              </div>
+              <div className="bg-blue-900/30 rounded-lg p-3 text-center">
+                <div className="text-2xl font-bold text-blue-400">{alertsData.summary.watchAlerts}</div>
+                <div className="text-xs text-gray-400">WATCH</div>
+              </div>
+            </div>
+
+            {/* Alerts List */}
+            <div className="space-y-4">
+              {alertsData.alerts.slice(0, 10).map((alert, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-lg border-l-4 ${
+                    alert.type === 'BUY'
+                      ? 'bg-green-900/20 border-green-500'
+                      : alert.type === 'SELL'
+                      ? 'bg-red-900/20 border-red-500'
+                      : alert.type === 'AVOID'
+                      ? 'bg-yellow-900/20 border-yellow-500'
+                      : 'bg-blue-900/20 border-blue-500'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
+                            alert.type === 'BUY'
+                              ? 'bg-green-600 text-white'
+                              : alert.type === 'SELL'
+                              ? 'bg-red-600 text-white'
+                              : alert.type === 'AVOID'
+                              ? 'bg-yellow-600 text-black'
+                              : 'bg-blue-600 text-white'
+                          }`}
+                        >
+                          {alert.type}
+                        </span>
+                        <span className="font-bold text-lg">{alert.stock}</span>
+                        <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">
+                          {alert.pattern}
+                        </span>
+                      </div>
+                      <div className="text-white font-medium mb-2">{alert.action}</div>
+                      <div className="text-sm text-gray-400 bg-gray-800/50 p-2 rounded">
+                        <span className="text-yellow-400 font-medium">Logic: </span>
+                        {alert.logic}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-2 mb-1">
+                        <ConfidenceBar confidence={alert.confidence} />
+                      </div>
+                      {alert.expectedReturn && (
+                        <div className="text-green-400 font-bold text-lg">
+                          {alert.expectedReturn}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {alertsData.alerts.length > 10 && (
+              <div className="text-center mt-4 text-gray-400 text-sm">
+                + {alertsData.alerts.length - 10} more alerts
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-8 text-gray-400">
+            <div className="text-4xl mb-2">✨</div>
+            <div>No strong patterns detected today.</div>
+            <div className="text-sm mt-1">Markets look neutral - no high-confidence setups.</div>
+          </div>
+        )}
       </div>
 
       {/* Secrets Accordion */}
