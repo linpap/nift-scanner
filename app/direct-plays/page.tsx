@@ -54,10 +54,11 @@ const CORRELATIONS = [
   { factor: 'Rupee ↓', stocks: 'TCS, Infosys, Wipro', direction: 'Every 1% depreciation = ~1% revenue boost', type: 'inverse-inr', commodityKey: 'usdinr' },
   { factor: 'Aluminium ↑', stocks: 'Hindalco, Nalco', direction: 'Direct LME price pass-through', type: 'positive', commodityKey: 'aluminium' },
   { factor: 'BDI ↑', stocks: 'SCI, GE Shipping', direction: 'Higher freight = direct revenue boost', type: 'positive', commodityKey: 'baltic' },
-  { factor: 'Rubber ↓', stocks: 'MRF, Apollo, CEAT', direction: '80%+ raw material is rubber', type: 'inverse', commodityKey: 'rubber' },
+  { factor: 'Rubber ↓', stocks: 'MRF, Apollo, CEAT', direction: '40-50% raw material is rubber', type: 'inverse', commodityKey: 'rubber' },
   { factor: 'Copper ↑', stocks: 'Hind Copper, Hindalco', direction: 'Direct LME correlation', type: 'positive', commodityKey: 'copper' },
   { factor: 'Gold ↑', stocks: 'Titan, Kalyan (mixed)', direction: 'Volume pressure but higher ticket size', type: 'mixed', commodityKey: 'gold' },
   { factor: 'Nat Gas ↑', stocks: 'Gujarat Gas, IGL, MGL', direction: 'CGD margin squeeze (negative)', type: 'negative', commodityKey: 'naturalgas' },
+  { factor: 'Soda Ash ↑', stocks: 'GHCL, Tata Chemicals', direction: 'Direct price pass-through to earnings', type: 'positive', commodityKey: 'sodaash' },
 ];
 
 // Confidence Meter Component

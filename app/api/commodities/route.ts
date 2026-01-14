@@ -37,8 +37,11 @@ const COMMODITY_SYMBOLS: Record<string, { symbol: string; name: string; currency
   // Shipping Index (proxy)
   baltic: { symbol: 'BDIY', name: 'Baltic Dry Index', currency: 'USD' },
 
-  // Rubber (proxy via Singapore)
-  rubber: { symbol: 'RUBUSD.SW', name: 'Rubber', currency: 'USD' },
+  // Rubber futures
+  rubber: { symbol: 'RBB=F', name: 'Rubber (RSS3)', currency: 'USD' },
+
+  // Soda Ash - using GHCL as proxy (largest Indian producer)
+  sodaash: { symbol: 'GHCL.NS', name: 'Soda Ash (GHCL proxy)', currency: 'INR' },
 };
 
 // Indian stock symbols to track
@@ -81,6 +84,10 @@ const INDIAN_STOCKS: Record<string, { symbol: string; name: string }> = {
   // Paints
   asianpaints: { symbol: 'ASIANPAINT.NS', name: 'Asian Paints' },
   berger: { symbol: 'BERGEPAINT.NS', name: 'Berger Paints' },
+
+  // Soda Ash
+  ghcl: { symbol: 'GHCL.NS', name: 'GHCL' },
+  tatachem: { symbol: 'TATACHEM.NS', name: 'Tata Chemicals' },
 };
 
 // Cache for commodity data - disabled on serverless to ensure fresh data
@@ -346,6 +353,42 @@ function calculateSignals(
       insight: direction === 'up'
         ? 'CGD companies face margin pressure from higher gas costs'
         : 'Lower gas benefits CGD companies',
+    });
+  }
+
+  // Rubber signal
+  const rubber = commodities.rubber;
+  if (rubber) {
+    const direction = rubber.changePercent > threshold ? 'up' : rubber.changePercent < -threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Rubber (RSS3)',
+      direction,
+      change: rubber.changePercent,
+      beneficiaries: direction === 'down' ? ['MRF', 'Apollo Tyres', 'CEAT', 'JK Tyre'] : [],
+      losers: direction === 'up' ? ['MRF', 'Apollo Tyres', 'CEAT'] : [],
+      insight: direction === 'up'
+        ? 'Rubber = 40-50% of tyre raw material costs, margin squeeze'
+        : direction === 'down'
+        ? 'Lower rubber = better margins for tyre companies'
+        : 'Rubber stable',
+    });
+  }
+
+  // Soda Ash signal (using GHCL as proxy)
+  const sodaash = commodities.sodaash;
+  if (sodaash) {
+    const direction = sodaash.changePercent > threshold ? 'up' : sodaash.changePercent < -threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Soda Ash (GHCL)',
+      direction,
+      change: sodaash.changePercent,
+      beneficiaries: direction === 'up' ? ['GHCL', 'Tata Chemicals'] : ['Glass companies'],
+      losers: direction === 'down' ? ['GHCL', 'Tata Chemicals'] : [],
+      insight: direction === 'up'
+        ? 'Soda ash prices rising - benefits producers like GHCL, Tata Chem'
+        : direction === 'down'
+        ? 'Lower soda ash helps glass & detergent makers'
+        : 'Soda ash stable',
     });
   }
 
