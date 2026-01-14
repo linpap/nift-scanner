@@ -58,7 +58,7 @@ async function fetchStockData(symbol: string): Promise<StockData | null> {
       `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=10d`,
       {
         headers: { 'User-Agent': 'Mozilla/5.0' },
-        next: { revalidate: 300 } // Cache for 5 minutes
+        cache: 'no-store'
       }
     );
 
