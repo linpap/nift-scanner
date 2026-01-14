@@ -205,6 +205,9 @@ export async function GET() {
     // Calculate direct play signals
     const signals = calculateSignals(commodities, stocks);
 
+    // Calculate trading opportunities with confidence scores
+    const opportunities = calculateOpportunities(commodities, stocks);
+
     return NextResponse.json({
       success: true,
       timestamp: Date.now(),
@@ -212,6 +215,7 @@ export async function GET() {
       commodities,
       stocks,
       signals,
+      opportunities,
     });
   } catch (error) {
     console.error('Commodities API error:', error);
@@ -229,6 +233,19 @@ interface Signal {
   beneficiaries: string[];
   losers: string[];
   insight: string;
+}
+
+interface Opportunity {
+  stock: string;
+  stockKey: string;
+  action: 'LONG' | 'SHORT';
+  confidence: number; // 0-100
+  reason: string;
+  trigger: string;
+  triggerChange: number;
+  priceTarget?: string;
+  stopLoss?: string;
+  riskReward: string;
 }
 
 function calculateSignals(
@@ -341,4 +358,124 @@ function calculateSignals(
   }
 
   return signals;
+}
+
+// Correlation strength data (based on research)
+const CORRELATION_CONFIG: Array<{
+  commodity: string;
+  stock: string;
+  stockKey: string;
+  direction: 'positive' | 'negative'; // positive = commodity up -> stock up, negative = commodity up -> stock down
+  strength: number; // 1-10 base strength
+  passThrough: number; // % of commodity move that passes to stock (e.g., 88 for Hind Zinc silver)
+  description: string;
+}> = [
+  // Silver - Hindustan Zinc (strongest correlation)
+  { commodity: 'silver', stock: 'Hindustan Zinc', stockKey: 'hindzinc', direction: 'positive', strength: 10, passThrough: 88, description: '88% of silver gains flow to EBITDA' },
+
+  // Crude Oil - Upstream (positive)
+  { commodity: 'crude', stock: 'ONGC', stockKey: 'ongc', direction: 'positive', strength: 9, passThrough: 70, description: '7-9% EPS uplift per $5/barrel' },
+  { commodity: 'crude', stock: 'Oil India', stockKey: 'oilindia', direction: 'positive', strength: 9, passThrough: 70, description: '7-9% EPS uplift per $5/barrel' },
+
+  // Crude Oil - Downstream (negative - they benefit when crude falls)
+  { commodity: 'crude', stock: 'BPCL', stockKey: 'bpcl', direction: 'negative', strength: 8, passThrough: 60, description: 'Lower crude = better refining margins' },
+  { commodity: 'crude', stock: 'HPCL', stockKey: 'hpcl', direction: 'negative', strength: 8, passThrough: 60, description: 'Lower crude = better refining margins' },
+  { commodity: 'crude', stock: 'IOC', stockKey: 'ioc', direction: 'negative', strength: 7, passThrough: 55, description: 'Lower crude = better refining margins' },
+  { commodity: 'crude', stock: 'IndiGo', stockKey: 'indigo', direction: 'negative', strength: 8, passThrough: 40, description: 'ATF = 40% of airline costs' },
+  { commodity: 'crude', stock: 'Asian Paints', stockKey: 'asianpaints', direction: 'negative', strength: 6, passThrough: 30, description: 'Crude derivatives in raw materials' },
+
+  // Aluminium - Direct LME correlation
+  { commodity: 'aluminium', stock: 'Hindalco', stockKey: 'hindalco', direction: 'positive', strength: 9, passThrough: 75, description: 'Direct LME price pass-through' },
+  { commodity: 'aluminium', stock: 'NALCO', stockKey: 'nalco', direction: 'positive', strength: 9, passThrough: 80, description: 'Direct LME price pass-through' },
+
+  // Copper
+  { commodity: 'copper', stock: 'Hindustan Copper', stockKey: 'hindcopper', direction: 'positive', strength: 9, passThrough: 75, description: 'Direct copper price correlation' },
+
+  // USD/INR - IT stocks (rupee weakness = positive for IT)
+  { commodity: 'usdinr', stock: 'TCS', stockKey: 'tcs', direction: 'positive', strength: 8, passThrough: 100, description: '1% depreciation = ~1% revenue boost' },
+  { commodity: 'usdinr', stock: 'Infosys', stockKey: 'infy', direction: 'positive', strength: 8, passThrough: 100, description: '1% depreciation = ~1% revenue boost' },
+  { commodity: 'usdinr', stock: 'Wipro', stockKey: 'wipro', direction: 'positive', strength: 7, passThrough: 90, description: '1% depreciation = ~1% revenue boost' },
+
+  // Rubber - Tyre stocks (inverse - rubber down = good for tyres)
+  { commodity: 'rubber', stock: 'MRF', stockKey: 'mrf', direction: 'negative', strength: 8, passThrough: 50, description: 'Rubber = 80%+ of raw material' },
+  { commodity: 'rubber', stock: 'Apollo Tyres', stockKey: 'apollotyres', direction: 'negative', strength: 8, passThrough: 55, description: 'Rubber = 80%+ of raw material' },
+  { commodity: 'rubber', stock: 'CEAT', stockKey: 'ceat', direction: 'negative', strength: 7, passThrough: 50, description: 'Rubber = 80%+ of raw material' },
+
+  // Natural Gas - CGD companies (inverse)
+  { commodity: 'naturalgas', stock: 'ONGC', stockKey: 'ongc', direction: 'positive', strength: 5, passThrough: 30, description: 'Gas producer benefits' },
+];
+
+function calculateOpportunities(
+  commodities: Record<string, CommodityData | null>,
+  stocks: Record<string, CommodityData | null>
+): Opportunity[] {
+  const opportunities: Opportunity[] = [];
+
+  for (const config of CORRELATION_CONFIG) {
+    const commodity = commodities[config.commodity];
+    const stock = stocks[config.stockKey];
+
+    if (!commodity || !stock) continue;
+
+    const commodityMove = Math.abs(commodity.changePercent);
+
+    // Threshold for generating an opportunity (commodity moved significantly)
+    if (commodityMove < 0.5) continue;
+
+    // Calculate confidence based on:
+    // 1. Strength of correlation (base)
+    // 2. Size of commodity move (bigger = more confident)
+    // 3. Whether stock hasn't already moved in the expected direction
+
+    let confidence = config.strength * 8; // Base: 8-80 based on strength
+
+    // Boost confidence for larger commodity moves
+    if (commodityMove > 1) confidence += 5;
+    if (commodityMove > 2) confidence += 10;
+    if (commodityMove > 3) confidence += 5;
+
+    // Determine expected stock direction
+    const commodityUp = commodity.changePercent > 0;
+    const expectedStockUp = config.direction === 'positive' ? commodityUp : !commodityUp;
+
+    // Check if stock has already moved in the expected direction
+    const stockAlreadyMoved = expectedStockUp
+      ? stock.changePercent > commodityMove * 0.5
+      : stock.changePercent < -commodityMove * 0.5;
+
+    // If stock hasn't moved yet (or moved opposite), opportunity is stronger
+    if (!stockAlreadyMoved) {
+      confidence += 10;
+    } else {
+      confidence -= 15; // Reduce confidence if already priced in
+    }
+
+    // Cap confidence at 95
+    confidence = Math.min(95, Math.max(20, confidence));
+
+    // Determine action
+    const action: 'LONG' | 'SHORT' = expectedStockUp ? 'LONG' : 'SHORT';
+
+    // Calculate expected move
+    const expectedMove = (commodityMove * config.passThrough / 100).toFixed(1);
+
+    // Build the opportunity
+    opportunities.push({
+      stock: config.stock,
+      stockKey: config.stockKey,
+      action,
+      confidence: Math.round(confidence),
+      reason: config.description,
+      trigger: `${commodity.name} ${commodity.changePercent > 0 ? '↑' : '↓'} ${Math.abs(commodity.changePercent).toFixed(2)}%`,
+      triggerChange: commodity.changePercent,
+      priceTarget: `${expectedMove}% move expected`,
+      riskReward: confidence > 70 ? 'Favorable' : confidence > 50 ? 'Moderate' : 'Speculative',
+    });
+  }
+
+  // Sort by confidence (highest first)
+  opportunities.sort((a, b) => b.confidence - a.confidence);
+
+  // Return top opportunities (limit to prevent clutter)
+  return opportunities.slice(0, 10);
 }
