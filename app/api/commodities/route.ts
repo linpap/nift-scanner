@@ -42,6 +42,30 @@ const COMMODITY_SYMBOLS: Record<string, { symbol: string; name: string; currency
 
   // Soda Ash - using GHCL as proxy (largest Indian producer)
   sodaash: { symbol: 'GHCL.NS', name: 'Soda Ash (GHCL proxy)', currency: 'INR' },
+
+  // Sugar
+  sugar: { symbol: 'SB=F', name: 'Sugar #11', currency: 'USD' },
+
+  // Cotton
+  cotton: { symbol: 'CT=F', name: 'Cotton', currency: 'USD' },
+
+  // Iron Ore
+  ironore: { symbol: 'TIO=F', name: 'Iron Ore', currency: 'USD' },
+
+  // Zinc
+  zinc: { symbol: 'ZNC=F', name: 'Zinc (LME)', currency: 'USD' },
+
+  // Lead - using Exide as proxy (no direct futures)
+  lead: { symbol: 'EXIDEIND.NS', name: 'Lead (Exide proxy)', currency: 'INR' },
+
+  // Coal - using Coal India as proxy
+  coal: { symbol: 'COALINDIA.NS', name: 'Coal (CIL proxy)', currency: 'INR' },
+
+  // Steel - using Tata Steel as proxy (no HRC futures)
+  steel: { symbol: 'TATASTEEL.NS', name: 'Steel (Tata proxy)', currency: 'INR' },
+
+  // Palm Oil - using HUL as proxy (major user)
+  palmoil: { symbol: 'HINDUNILVR.NS', name: 'Palm Oil (HUL proxy)', currency: 'INR' },
 };
 
 // Indian stock symbols to track
@@ -88,6 +112,35 @@ const INDIAN_STOCKS: Record<string, { symbol: string; name: string }> = {
   // Soda Ash
   ghcl: { symbol: 'GHCL.NS', name: 'GHCL' },
   tatachem: { symbol: 'TATACHEM.NS', name: 'Tata Chemicals' },
+
+  // Sugar Mills
+  balrampur: { symbol: 'BALRAMCHIN.NS', name: 'Balrampur Chini' },
+  triveni: { symbol: 'TRIVENI.NS', name: 'Triveni Engineering' },
+  dhampur: { symbol: 'DHAMPURSUG.NS', name: 'Dhampur Sugar' },
+
+  // Textiles (Cotton)
+  vardhman: { symbol: 'VTL.NS', name: 'Vardhman Textiles' },
+  arvind: { symbol: 'ARVIND.NS', name: 'Arvind' },
+  page: { symbol: 'PAGEIND.NS', name: 'Page Industries' },
+
+  // Steel
+  tatasteel: { symbol: 'TATASTEEL.NS', name: 'Tata Steel' },
+  jswsteel: { symbol: 'JSWSTEEL.NS', name: 'JSW Steel' },
+  sail: { symbol: 'SAIL.NS', name: 'SAIL' },
+
+  // Iron Ore
+  nmdc: { symbol: 'NMDC.NS', name: 'NMDC' },
+
+  // Battery (Lead)
+  exide: { symbol: 'EXIDEIND.NS', name: 'Exide Industries' },
+
+  // Coal
+  coalindia: { symbol: 'COALINDIA.NS', name: 'Coal India' },
+
+  // FMCG (Palm Oil impact)
+  hul: { symbol: 'HINDUNILVR.NS', name: 'HUL' },
+  godrejcp: { symbol: 'GODREJCP.NS', name: 'Godrej Consumer' },
+  marico: { symbol: 'MARICO.NS', name: 'Marico' },
 };
 
 // Cache for commodity data - disabled on serverless to ensure fresh data
@@ -389,6 +442,133 @@ function calculateSignals(
         : direction === 'down'
         ? 'Lower soda ash helps glass & detergent makers'
         : 'Soda ash stable',
+    });
+  }
+
+  // Sugar signal
+  const sugar = commodities.sugar;
+  if (sugar) {
+    const direction = sugar.changePercent > threshold ? 'up' : sugar.changePercent < -threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Sugar #11',
+      direction,
+      change: sugar.changePercent,
+      beneficiaries: direction === 'up' ? ['Balrampur Chini', 'Triveni', 'Dhampur Sugar'] : ['FMCG, Beverages'],
+      losers: direction === 'down' ? ['Sugar mills'] : [],
+      insight: direction === 'up'
+        ? 'Higher sugar prices = direct revenue boost for mills'
+        : direction === 'down'
+        ? 'Lower sugar prices pressure mill margins'
+        : 'Sugar stable',
+    });
+  }
+
+  // Cotton signal
+  const cotton = commodities.cotton;
+  if (cotton) {
+    const direction = cotton.changePercent > threshold ? 'up' : cotton.changePercent < -threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Cotton',
+      direction,
+      change: cotton.changePercent,
+      beneficiaries: direction === 'down' ? ['Vardhman', 'Arvind', 'Page Industries'] : [],
+      losers: direction === 'up' ? ['Vardhman', 'Arvind', 'Page Industries'] : [],
+      insight: direction === 'up'
+        ? 'Cotton = 60-70% of textile raw material, margin squeeze'
+        : direction === 'down'
+        ? 'Lower cotton = better margins for textile companies'
+        : 'Cotton stable',
+    });
+  }
+
+  // Iron Ore signal
+  const ironore = commodities.ironore;
+  if (ironore) {
+    const direction = ironore.changePercent > threshold ? 'up' : ironore.changePercent < -threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Iron Ore',
+      direction,
+      change: ironore.changePercent,
+      beneficiaries: direction === 'up' ? ['NMDC', 'Tata Steel', 'JSW Steel'] : [],
+      losers: direction === 'down' ? ['NMDC'] : [],
+      insight: direction === 'up'
+        ? 'NMDC benefits directly, steel makers have captive mines'
+        : direction === 'down'
+        ? 'Lower iron ore pressures NMDC revenue'
+        : 'Iron ore stable',
+    });
+  }
+
+  // Zinc signal
+  const zinc = commodities.zinc;
+  if (zinc) {
+    const direction = zinc.changePercent > threshold ? 'up' : zinc.changePercent < -threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Zinc (LME)',
+      direction,
+      change: zinc.changePercent,
+      beneficiaries: direction === 'up' ? ['Hindustan Zinc'] : [],
+      losers: direction === 'down' ? ['Hindustan Zinc'] : [],
+      insight: direction === 'up'
+        ? 'Hindustan Zinc has 70% zinc exposure, direct pass-through'
+        : direction === 'down'
+        ? 'Lower zinc prices pressure Hindustan Zinc'
+        : 'Zinc stable',
+    });
+  }
+
+  // Steel signal (proxy)
+  const steel = commodities.steel;
+  if (steel) {
+    const direction = steel.changePercent > threshold ? 'up' : steel.changePercent < -threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Steel (HRC)',
+      direction,
+      change: steel.changePercent,
+      beneficiaries: direction === 'up' ? ['Tata Steel', 'JSW Steel', 'SAIL'] : ['Auto, Infrastructure'],
+      losers: direction === 'down' ? ['Steel producers'] : [],
+      insight: direction === 'up'
+        ? 'Higher steel prices = revenue boost for producers'
+        : direction === 'down'
+        ? 'Lower steel benefits auto & infra companies'
+        : 'Steel stable',
+    });
+  }
+
+  // Coal signal (proxy)
+  const coal = commodities.coal;
+  if (coal) {
+    const direction = coal.changePercent > threshold ? 'up' : coal.changePercent < -threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Coal',
+      direction,
+      change: coal.changePercent,
+      beneficiaries: direction === 'up' ? ['Coal India'] : ['Power companies', 'Steel'],
+      losers: direction === 'up' ? ['NTPC', 'Power Grid', 'Tata Power'] : [],
+      insight: direction === 'up'
+        ? 'Coal India benefits, power/steel face cost pressure'
+        : direction === 'down'
+        ? 'Lower coal costs benefit power & steel sector'
+        : 'Coal stable',
+    });
+  }
+
+  // Palm Oil signal (using HUL as proxy - inverse relationship)
+  const palmoil = commodities.palmoil;
+  if (palmoil) {
+    // For palm oil, HUL down might mean palm oil up (cost pressure)
+    const direction = palmoil.changePercent < -threshold ? 'up' : palmoil.changePercent > threshold ? 'down' : 'neutral';
+    signals.push({
+      factor: 'Palm Oil',
+      direction,
+      change: -palmoil.changePercent, // Inverse since we're using HUL
+      beneficiaries: direction === 'down' ? ['HUL', 'Godrej Consumer', 'Marico'] : [],
+      losers: direction === 'up' ? ['HUL', 'Godrej Consumer', 'Marico'] : [],
+      insight: direction === 'up'
+        ? 'Palm oil = 20-30% of FMCG raw materials, margin squeeze'
+        : direction === 'down'
+        ? 'Lower palm oil = better FMCG margins'
+        : 'Palm oil stable',
     });
   }
 

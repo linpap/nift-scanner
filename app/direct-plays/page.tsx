@@ -47,18 +47,37 @@ interface ApiResponse {
 
 // Static correlation data
 const CORRELATIONS = [
+  // Precious Metals
   { factor: 'Silver ↑', stocks: 'Hindustan Zinc', direction: '88% of price gains flow to EBITDA', type: 'positive', commodityKey: 'silver' },
+  { factor: 'Gold ↑', stocks: 'Titan, Kalyan (mixed)', direction: 'Volume pressure but higher ticket size', type: 'mixed', commodityKey: 'gold' },
+  { factor: 'Zinc ↑', stocks: 'Hindustan Zinc', direction: '70% zinc exposure, direct pass-through', type: 'positive', commodityKey: 'zinc' },
+
+  // Energy
   { factor: 'Crude ↑', stocks: 'ONGC, Oil India', direction: '7-9% EPS for every $5/barrel', type: 'positive', commodityKey: 'crude' },
   { factor: 'Crude ↓', stocks: 'BPCL, HPCL, IOC', direction: 'Refiners rally on lower input costs', type: 'inverse', commodityKey: 'crude' },
   { factor: 'ATF ↓', stocks: 'IndiGo, SpiceJet', direction: 'ATF = 40% of airline costs', type: 'inverse', commodityKey: 'crude' },
-  { factor: 'Rupee ↓', stocks: 'TCS, Infosys, Wipro', direction: 'Every 1% depreciation = ~1% revenue boost', type: 'inverse-inr', commodityKey: 'usdinr' },
-  { factor: 'Aluminium ↑', stocks: 'Hindalco, Nalco', direction: 'Direct LME price pass-through', type: 'positive', commodityKey: 'aluminium' },
-  { factor: 'BDI ↑', stocks: 'SCI, GE Shipping', direction: 'Higher freight = direct revenue boost', type: 'positive', commodityKey: 'baltic' },
-  { factor: 'Rubber ↓', stocks: 'MRF, Apollo, CEAT', direction: '40-50% raw material is rubber', type: 'inverse', commodityKey: 'rubber' },
-  { factor: 'Copper ↑', stocks: 'Hind Copper, Hindalco', direction: 'Direct LME correlation', type: 'positive', commodityKey: 'copper' },
-  { factor: 'Gold ↑', stocks: 'Titan, Kalyan (mixed)', direction: 'Volume pressure but higher ticket size', type: 'mixed', commodityKey: 'gold' },
   { factor: 'Nat Gas ↑', stocks: 'Gujarat Gas, IGL, MGL', direction: 'CGD margin squeeze (negative)', type: 'negative', commodityKey: 'naturalgas' },
+  { factor: 'Coal ↑', stocks: 'Coal India', direction: 'Direct revenue boost for miner', type: 'positive', commodityKey: 'coal' },
+
+  // Base Metals
+  { factor: 'Aluminium ↑', stocks: 'Hindalco, Nalco', direction: 'Direct LME price pass-through', type: 'positive', commodityKey: 'aluminium' },
+  { factor: 'Copper ↑', stocks: 'Hind Copper, Hindalco', direction: 'Direct LME correlation', type: 'positive', commodityKey: 'copper' },
+  { factor: 'Steel ↑', stocks: 'Tata Steel, JSW, SAIL', direction: 'Higher realisations boost revenue', type: 'positive', commodityKey: 'steel' },
+  { factor: 'Iron Ore ↑', stocks: 'NMDC, Tata Steel', direction: 'NMDC benefits directly', type: 'positive', commodityKey: 'ironore' },
+
+  // Agri & Soft Commodities
+  { factor: 'Sugar ↑', stocks: 'Balrampur, Triveni, Dhampur', direction: 'Direct revenue boost for mills', type: 'positive', commodityKey: 'sugar' },
+  { factor: 'Cotton ↓', stocks: 'Vardhman, Arvind, Page', direction: '60-70% raw material cost for textiles', type: 'inverse', commodityKey: 'cotton' },
+  { factor: 'Rubber ↓', stocks: 'MRF, Apollo, CEAT', direction: '40-50% raw material is rubber', type: 'inverse', commodityKey: 'rubber' },
+  { factor: 'Palm Oil ↓', stocks: 'HUL, Godrej, Marico', direction: '20-30% FMCG raw material', type: 'inverse', commodityKey: 'palmoil' },
+
+  // Industrial
   { factor: 'Soda Ash ↑', stocks: 'GHCL, Tata Chemicals', direction: 'Direct price pass-through to earnings', type: 'positive', commodityKey: 'sodaash' },
+  { factor: 'Lead ↓', stocks: 'Exide, Amara Raja', direction: 'Lead = 60% of battery raw material', type: 'inverse', commodityKey: 'lead' },
+
+  // Currency & Shipping
+  { factor: 'Rupee ↓', stocks: 'TCS, Infosys, Wipro', direction: 'Every 1% depreciation = ~1% revenue boost', type: 'inverse-inr', commodityKey: 'usdinr' },
+  { factor: 'BDI ↑', stocks: 'SCI, GE Shipping', direction: 'Higher freight = direct revenue boost', type: 'positive', commodityKey: 'baltic' },
 ];
 
 // Confidence Meter Component
