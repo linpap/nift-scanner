@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'NIFT Scanner - NSE F&O Stock Scanner',
+  title: 'STOCK Scanner - NSE F&O Stock Scanner',
   description: 'Real-time NSE F&O stock scanner for swing trading and momentum strategies',
 };
 

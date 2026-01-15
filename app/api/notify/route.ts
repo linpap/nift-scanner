@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const whatsappApiKey = process.env.WHATSAPP_API_KEY || searchParams.get('api_key');
 
   if (test) {
-    const testMessage = '🧪 NIFT Scanner Test Notification\n\nIf you see this, notifications are working!';
+    const testMessage = '🧪 STOCK Scanner Test Notification\n\nIf you see this, notifications are working!';
 
     if (platform === 'telegram') {
       if (!telegramBotToken || !telegramChatId) {

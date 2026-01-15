@@ -12,7 +12,7 @@ export default function Footer() {
                 N
               </div>
               <div>
-                <div className="font-bold text-white text-lg">NIFT Scanner</div>
+                <div className="font-bold text-white text-lg">STOCK Scanner</div>
                 <div className="text-xs text-gray-500">Professional NSE F&O Analytics</div>
               </div>
             </div>
@@ -80,7 +80,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-gray-500 text-sm">
-            © {new Date().getFullYear()} NIFT Scanner. For educational purposes only.
+            © {new Date().getFullYear()} STOCK Scanner. For educational purposes only.
           </div>
           <div className="flex items-center gap-6 text-sm">
             <span className="text-gray-500">

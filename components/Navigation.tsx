@@ -25,7 +25,7 @@ export default function Navigation() {
             </div>
             <div>
               <div className="font-bold text-white text-lg group-hover:text-emerald-400 transition-colors">
-                NIFT Scanner
+                STOCK Scanner
               </div>
               <div className="text-xs text-gray-500">
                 NSE F&O Analytics

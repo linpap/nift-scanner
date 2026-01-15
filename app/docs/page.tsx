@@ -19,7 +19,7 @@ const DOC_SECTIONS: DocSection[] = [
     content: (
       <div className="space-y-4">
         <p className="text-gray-300">
-          NIFT Scanner is a professional-grade analytics platform for NSE F&O (Futures & Options) stocks.
+          STOCK Scanner is a professional-grade analytics platform for NSE F&O (Futures & Options) stocks.
           It provides real-time scanning, seasonal pattern analysis, and commodity correlation insights.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -440,7 +440,7 @@ export default function DocsPage() {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Documentation</h1>
             <p className="text-gray-400">
-              Learn how to use NIFT Scanner effectively for your trading analysis
+              Learn how to use STOCK Scanner effectively for your trading analysis
             </p>
           </div>
 

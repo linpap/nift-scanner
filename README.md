@@ -1,4 +1,4 @@
-# NIFT Scanner - NSE F&O Stock Scanner
+# STOCK Scanner - NSE F&O Stock Scanner
 
 Real-time stock scanner for NSE F&O stocks. Replicates Chartink-style technical scanners for swing trading.
 
