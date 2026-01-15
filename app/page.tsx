@@ -304,6 +304,12 @@ export default function Home() {
           </div>
           <div className="flex gap-2">
             <Link
+              href="/month-analysis"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <span>📅</span> Month Analysis
+            </Link>
+            <Link
               href="/direct-plays"
               className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             >
