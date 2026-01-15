@@ -1,8 +1,8 @@
 // Monthly seasonal pattern analysis
-// Analyzes 2 years of data to find monthly patterns
+// 100% DATA-DRIVEN - No hardcoded assumptions
 
 import { HistoricalData } from './data-fetcher';
-import { SECTORS, SectorInfo, SECTOR_MONTH_AFFINITY, MONTHLY_EVENTS } from './sector-stocks';
+import { SECTORS, SectorInfo, MONTHLY_EVENTS } from './sector-stocks';
 
 export interface MonthlyReturn {
   month: number; // 1-12
@@ -20,6 +20,7 @@ export interface StockMonthlyPattern {
   monthlyReturns: MonthlyReturn[];
   averageReturnByMonth: Record<number, number>; // month -> avg return %
   winRateByMonth: Record<number, number>; // month -> % of positive months
+  dataPointsByMonth: Record<number, number>; // month -> count of data points
   bestMonth: number;
   worstMonth: number;
 }
@@ -29,9 +30,10 @@ export interface StockRecommendation {
   sector: string;
   sectorName: string;
   currentPrice: number;
-  confidence: number; // 0-100
+  confidence: number; // 0-100 - CALCULATED FROM DATA
   expectedReturn: number; // historical avg return for this month
   winRate: number; // % times positive in this month
+  dataPoints: number; // how many years of data
   rationale: string[];
   historicalData: {
     month: number;
@@ -42,11 +44,11 @@ export interface StockRecommendation {
 
 export interface SectorAnalysis {
   sector: SectorInfo;
-  affinityScore: number;
-  avgReturn: number;
-  winRate: number;
+  avgReturn: number; // CALCULATED from stock data
+  winRate: number; // CALCULATED from stock data
+  stocksAnalyzed: number;
   topStocks: StockRecommendation[];
-  keyInsight: string;
+  insight: string; // Generated from actual data
 }
 
 export interface MonthAnalysisResult {
@@ -54,7 +56,7 @@ export interface MonthAnalysisResult {
   monthName: string;
   year: number;
   marketEvents: string[];
-  topSectors: SectorAnalysis[];
+  sectors: SectorAnalysis[];
   allRecommendations: StockRecommendation[];
   keyObservations: string[];
 }
@@ -84,7 +86,7 @@ export function calculateMonthlyReturns(historicalData: HistoricalData[]): Month
   const monthlyReturns: MonthlyReturn[] = [];
 
   Object.entries(monthlyGroups).forEach(([key, candles]) => {
-    if (candles.length < 5) return; // Need at least 5 trading days
+    if (candles.length < 10) return; // Need at least 10 trading days for reliable data
 
     const [yearStr, monthStr] = key.split('-');
     const year = parseInt(yearStr);
@@ -125,7 +127,7 @@ export function analyzeStockPattern(symbol: string, historicalData: HistoricalDa
 
   if (monthlyReturns.length < 12) return null; // Need at least 1 year of data
 
-  // Calculate average return by month
+  // Calculate average return and win rate by month
   const returnsByMonth: Record<number, number[]> = {};
 
   for (let m = 1; m <= 12; m++) {
@@ -138,9 +140,12 @@ export function analyzeStockPattern(symbol: string, historicalData: HistoricalDa
 
   const averageReturnByMonth: Record<number, number> = {};
   const winRateByMonth: Record<number, number> = {};
+  const dataPointsByMonth: Record<number, number> = {};
 
   for (let m = 1; m <= 12; m++) {
     const returns = returnsByMonth[m];
+    dataPointsByMonth[m] = returns.length;
+
     if (returns.length > 0) {
       averageReturnByMonth[m] = returns.reduce((a, b) => a + b, 0) / returns.length;
       winRateByMonth[m] = (returns.filter(r => r > 0).length / returns.length) * 100;
@@ -170,89 +175,140 @@ export function analyzeStockPattern(symbol: string, historicalData: HistoricalDa
     monthlyReturns,
     averageReturnByMonth,
     winRateByMonth,
+    dataPointsByMonth,
     bestMonth,
     worstMonth
   };
 }
 
-// Generate confidence score for a stock in a given month
+// Calculate confidence score PURELY from data
 function calculateConfidence(
-  pattern: StockMonthlyPattern,
-  month: number,
-  sectorAffinity: number
+  avgReturn: number,
+  winRate: number,
+  dataPoints: number
 ): number {
-  const avgReturn = pattern.averageReturnByMonth[month] || 0;
-  const winRate = pattern.winRateByMonth[month] || 0;
-  const dataPoints = pattern.monthlyReturns.filter(mr => mr.month === month).length;
+  // Confidence is based on:
+  // 1. Win rate (most important) - 50 points max
+  // 2. Consistency of positive returns - 30 points max
+  // 3. Data reliability (more data = more confident) - 20 points max
 
-  // Base confidence from win rate (0-40 points)
-  let confidence = Math.min(winRate * 0.4, 40);
+  let confidence = 0;
 
-  // Bonus for positive average return (0-25 points)
+  // Win rate component (0-50 points)
+  // 100% win rate = 50 points, 50% = 25, 0% = 0
+  confidence += winRate * 0.5;
+
+  // Return magnitude bonus/penalty (0-30 points)
+  // Strong positive returns add confidence, negative returns reduce it
   if (avgReturn > 0) {
-    confidence += Math.min(avgReturn * 5, 25);
+    // +5% avg return = 30 points, +2% = 12 points
+    confidence += Math.min(avgReturn * 6, 30);
+  } else {
+    // Negative returns penalize confidence
+    // -5% = -15 points penalty
+    confidence += Math.max(avgReturn * 3, -20);
   }
 
-  // Sector affinity bonus (0-20 points)
-  confidence += (sectorAffinity - 50) * 0.4; // Convert 50-90 to 0-16
-
-  // Data reliability bonus (0-15 points)
-  // More data points = more reliable
-  confidence += Math.min(dataPoints * 7.5, 15);
+  // Data reliability (0-20 points)
+  // 2 data points = 10, 3+ = 20
+  if (dataPoints >= 3) {
+    confidence += 20;
+  } else if (dataPoints >= 2) {
+    confidence += 10;
+  } else if (dataPoints >= 1) {
+    confidence += 5;
+  }
 
   return Math.max(0, Math.min(100, Math.round(confidence)));
 }
 
-// Generate rationale for recommendation
+// Generate rationale based ONLY on actual data
 function generateRationale(
   symbol: string,
   pattern: StockMonthlyPattern,
-  month: number,
-  sector: SectorInfo,
-  events: string[]
+  month: number
 ): string[] {
   const rationale: string[] = [];
   const avgReturn = pattern.averageReturnByMonth[month] || 0;
   const winRate = pattern.winRateByMonth[month] || 0;
-  const dataPoints = pattern.monthlyReturns.filter(mr => mr.month === month);
+  const dataPoints = pattern.dataPointsByMonth[month] || 0;
+  const monthData = pattern.monthlyReturns.filter(mr => mr.month === month);
 
   const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // Historical performance
-  if (avgReturn > 3) {
-    rationale.push(`Strong historical performer in ${monthNames[month]} with avg ${avgReturn.toFixed(1)}% return`);
+  // Data-based statements only
+  if (dataPoints > 0) {
+    rationale.push(`Based on ${dataPoints} year${dataPoints > 1 ? 's' : ''} of data`);
+  }
+
+  // Performance description
+  if (avgReturn > 5) {
+    rationale.push(`Strong avg return of +${avgReturn.toFixed(1)}% in ${monthNames[month]}`);
+  } else if (avgReturn > 2) {
+    rationale.push(`Positive avg return of +${avgReturn.toFixed(1)}% in ${monthNames[month]}`);
   } else if (avgReturn > 0) {
-    rationale.push(`Positive historical bias in ${monthNames[month]} (avg ${avgReturn.toFixed(1)}%)`);
+    rationale.push(`Slight positive bias: +${avgReturn.toFixed(1)}% avg in ${monthNames[month]}`);
+  } else if (avgReturn > -2) {
+    rationale.push(`Near flat: ${avgReturn.toFixed(1)}% avg in ${monthNames[month]}`);
+  } else {
+    rationale.push(`Negative historical: ${avgReturn.toFixed(1)}% avg in ${monthNames[month]}`);
   }
 
-  // Win rate
-  if (winRate >= 70) {
-    rationale.push(`High win rate: ${winRate.toFixed(0)}% of past ${monthNames[month]} months were positive`);
-  } else if (winRate >= 50) {
-    rationale.push(`Moderate win rate: ${winRate.toFixed(0)}% positive months historically`);
+  // Win rate description
+  if (winRate >= 80 && dataPoints >= 2) {
+    rationale.push(`High consistency: ${winRate.toFixed(0)}% of ${monthNames[month]} months were positive`);
+  } else if (winRate >= 60 && dataPoints >= 2) {
+    rationale.push(`Moderate consistency: ${winRate.toFixed(0)}% positive months`);
+  } else if (winRate < 50 && dataPoints >= 2) {
+    rationale.push(`Low consistency: only ${winRate.toFixed(0)}% positive months`);
   }
 
-  // Sector seasonality
-  rationale.push(`${sector.name}: ${sector.seasonalHint}`);
-
-  // Recent performance
-  if (dataPoints.length >= 2) {
-    const recent = dataPoints.slice(-2);
-    const recentAvg = recent.reduce((sum, d) => sum + d.returnPercent, 0) / recent.length;
-    if (recentAvg > avgReturn) {
-      rationale.push(`Recent years show improving trend`);
+  // Recent trend
+  if (monthData.length >= 2) {
+    const recent = monthData.slice(-2);
+    const positiveRecent = recent.filter(d => d.returnPercent > 0).length;
+    if (positiveRecent === 2) {
+      rationale.push(`Last 2 years: both positive`);
+    } else if (positiveRecent === 0) {
+      rationale.push(`Last 2 years: both negative`);
     }
   }
 
-  // Market events
-  if (events.length > 0) {
-    rationale.push(`Key events: ${events.slice(0, 2).join(', ')}`);
+  // Best/worst month for this stock
+  if (pattern.bestMonth === month && avgReturn > 0) {
+    rationale.push(`${monthNames[month]} is historically this stock's best month`);
+  } else if (pattern.worstMonth === month && avgReturn < 0) {
+    rationale.push(`${monthNames[month]} is historically this stock's worst month`);
   }
 
   return rationale;
 }
 
-// Main analysis function
+// Generate sector insight from actual data
+function generateSectorInsight(
+  sectorName: string,
+  avgReturn: number,
+  winRate: number,
+  stocksAnalyzed: number
+): string {
+  if (stocksAnalyzed === 0) {
+    return 'Insufficient data for analysis';
+  }
+
+  if (avgReturn > 3 && winRate >= 60) {
+    return `Data shows positive bias: +${avgReturn.toFixed(1)}% avg, ${winRate.toFixed(0)}% win rate`;
+  } else if (avgReturn > 0 && winRate >= 50) {
+    return `Slight positive tendency: +${avgReturn.toFixed(1)}% avg, ${winRate.toFixed(0)}% win rate`;
+  } else if (avgReturn < -3 && winRate < 40) {
+    return `Data shows negative bias: ${avgReturn.toFixed(1)}% avg, ${winRate.toFixed(0)}% win rate`;
+  } else if (avgReturn < 0) {
+    return `Mixed to negative: ${avgReturn.toFixed(1)}% avg, ${winRate.toFixed(0)}% win rate`;
+  } else {
+    return `Mixed signals: ${avgReturn.toFixed(1)}% avg, ${winRate.toFixed(0)}% win rate`;
+  }
+}
+
+// Main analysis function - 100% data driven
 export function analyzeMonth(
   month: number,
   year: number,
@@ -268,8 +324,10 @@ export function analyzeMonth(
 
   // Analyze each sector
   SECTORS.forEach(sector => {
-    const sectorAffinity = SECTOR_MONTH_AFFINITY[sector.id]?.[month] || 50;
     const sectorStocks: StockRecommendation[] = [];
+    let totalReturn = 0;
+    let totalWinRate = 0;
+    let stockCount = 0;
 
     sector.stocks.forEach(symbol => {
       const pattern = stockPatterns.get(symbol);
@@ -278,9 +336,12 @@ export function analyzeMonth(
       const currentPrice = currentPrices.get(symbol) || 0;
       const avgReturn = pattern.averageReturnByMonth[month] || 0;
       const winRate = pattern.winRateByMonth[month] || 0;
+      const dataPoints = pattern.dataPointsByMonth[month] || 0;
 
-      const confidence = calculateConfidence(pattern, month, sectorAffinity);
-      const rationale = generateRationale(symbol, pattern, month, sector, events);
+      if (dataPoints === 0) return; // Skip if no data for this month
+
+      const confidence = calculateConfidence(avgReturn, winRate, dataPoints);
+      const rationale = generateRationale(symbol, pattern, month);
 
       const historicalData = pattern.monthlyReturns
         .filter(mr => mr.month === month)
@@ -298,137 +359,127 @@ export function analyzeMonth(
         confidence,
         expectedReturn: avgReturn,
         winRate,
+        dataPoints,
         rationale,
         historicalData
       };
 
       sectorStocks.push(recommendation);
       allRecommendations.push(recommendation);
+
+      totalReturn += avgReturn;
+      totalWinRate += winRate;
+      stockCount++;
     });
 
-    // Calculate sector-level metrics
-    if (sectorStocks.length > 0) {
-      const avgSectorReturn = sectorStocks.reduce((sum, s) => sum + s.expectedReturn, 0) / sectorStocks.length;
-      const avgWinRate = sectorStocks.reduce((sum, s) => sum + s.winRate, 0) / sectorStocks.length;
+    // Calculate sector-level metrics FROM DATA
+    if (stockCount > 0) {
+      const avgSectorReturn = totalReturn / stockCount;
+      const avgWinRate = totalWinRate / stockCount;
 
-      // Sort stocks by confidence and take top 5
+      // Sort stocks by confidence (which is data-driven)
       const topStocks = [...sectorStocks]
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 5);
 
-      // Generate key insight
-      let keyInsight = '';
-      if (sectorAffinity >= 80) {
-        keyInsight = `Historically strong month for ${sector.name}. ${sector.seasonalHint}`;
-      } else if (sectorAffinity >= 65) {
-        keyInsight = `Above average performance expected. ${sector.seasonalHint}`;
-      } else if (sectorAffinity <= 45) {
-        keyInsight = `Historically weak month. Consider reducing exposure.`;
-      } else {
-        keyInsight = `Mixed historical performance. Stock-specific analysis recommended.`;
-      }
+      const insight = generateSectorInsight(sector.name, avgSectorReturn, avgWinRate, stockCount);
 
       sectorAnalyses.push({
         sector,
-        affinityScore: sectorAffinity,
         avgReturn: avgSectorReturn,
         winRate: avgWinRate,
+        stocksAnalyzed: stockCount,
         topStocks,
-        keyInsight
+        insight
       });
     }
   });
 
-  // Sort sectors by affinity score
-  const topSectors = [...sectorAnalyses]
-    .sort((a, b) => b.affinityScore - a.affinityScore)
-    .slice(0, 8);
+  // Sort sectors by average return (actual performance)
+  const sortedSectors = [...sectorAnalyses]
+    .sort((a, b) => b.avgReturn - a.avgReturn);
 
   // Sort all recommendations by confidence
   const sortedRecommendations = [...allRecommendations]
     .sort((a, b) => b.confidence - a.confidence);
 
-  // Generate key observations
-  const keyObservations = generateKeyObservations(month, topSectors, events);
+  // Generate observations from actual data
+  const keyObservations = generateDataDrivenObservations(month, sortedSectors, events);
 
   return {
     month,
     monthName: monthNames[month],
     year,
     marketEvents: events,
-    topSectors,
+    sectors: sortedSectors,
     allRecommendations: sortedRecommendations,
     keyObservations
   };
 }
 
-// Generate key observations for the month
-function generateKeyObservations(
+// Generate observations based ONLY on actual data
+function generateDataDrivenObservations(
   month: number,
-  topSectors: SectorAnalysis[],
+  sectors: SectorAnalysis[],
   events: string[]
 ): string[] {
   const observations: string[] = [];
   const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
                       'July', 'August', 'September', 'October', 'November', 'December'];
 
-  // Top performing sectors
-  const strongSectors = topSectors.filter(s => s.affinityScore >= 75);
-  if (strongSectors.length > 0) {
-    const names = strongSectors.slice(0, 3).map(s => s.sector.name).join(', ');
-    observations.push(`🔥 Historically strong sectors: ${names}`);
+  // Top performing sectors (if any have positive returns)
+  const positiveSectors = sectors.filter(s => s.avgReturn > 0 && s.winRate >= 50);
+  if (positiveSectors.length > 0) {
+    const topNames = positiveSectors.slice(0, 3).map(s =>
+      `${s.sector.name} (+${s.avgReturn.toFixed(1)}%)`
+    ).join(', ');
+    observations.push(`Historically positive sectors: ${topNames}`);
   }
 
-  // Budget month observation
-  if (month === 2) {
-    observations.push(`📊 Union Budget month - PSU stocks, Infrastructure, and Defence typically see action`);
+  // Weak sectors
+  const negativeSectors = sectors.filter(s => s.avgReturn < -2);
+  if (negativeSectors.length > 0) {
+    const weakNames = negativeSectors.slice(0, 2).map(s =>
+      `${s.sector.name} (${s.avgReturn.toFixed(1)}%)`
+    ).join(', ');
+    observations.push(`Historically weak: ${weakNames}`);
   }
 
-  // Festive season
-  if (month === 10 || month === 11) {
-    observations.push(`🎉 Festive season peak - Consumer Durables, Auto, and FMCG historically outperform`);
+  // High confidence stocks across all sectors
+  const highConfidenceCount = sectors.reduce((sum, s) =>
+    sum + s.topStocks.filter(st => st.confidence >= 70).length, 0
+  );
+  if (highConfidenceCount > 0) {
+    observations.push(`${highConfidenceCount} stocks show high confidence (70%+) based on historical patterns`);
   }
 
-  // Summer months
-  if (month >= 3 && month <= 5) {
-    observations.push(`☀️ Summer months - Appliances (AC/Coolers), Power utilities tend to perform well`);
+  // Overall market tendency for this month
+  const totalStocks = sectors.reduce((sum, s) => sum + s.stocksAnalyzed, 0);
+  const weightedReturn = sectors.reduce((sum, s) => sum + s.avgReturn * s.stocksAnalyzed, 0) / (totalStocks || 1);
+
+  if (weightedReturn > 2) {
+    observations.push(`${monthNames[month]} historically shows positive market bias (+${weightedReturn.toFixed(1)}% avg)`);
+  } else if (weightedReturn < -2) {
+    observations.push(`${monthNames[month]} historically shows negative market bias (${weightedReturn.toFixed(1)}% avg)`);
+  } else {
+    observations.push(`${monthNames[month]} shows mixed historical performance (${weightedReturn.toFixed(1)}% avg)`);
   }
 
-  // Monsoon
-  if (month === 7 || month === 8) {
-    observations.push(`🌧️ Monsoon season - Pharma (acute illness), Agrochem sectors see demand`);
-  }
-
-  // Q4 results
-  if (month === 4 || month === 5) {
-    observations.push(`📈 Q4 Results Season - IT sector deal wins and earnings typically boost sentiment`);
-  }
-
-  // Year-end
-  if (month === 12) {
-    observations.push(`📅 Year-end rally - FII flows and portfolio rebalancing often positive for markets`);
-  }
-
-  // Add event-based observations
+  // Events (factual)
   if (events.length > 0) {
-    observations.push(`📌 Key events this month: ${events.join(', ')}`);
+    observations.push(`Key events: ${events.join(', ')}`);
   }
 
-  // Weak sectors warning
-  const weakSectors = topSectors.filter(s => s.affinityScore <= 50);
-  if (weakSectors.length > 0) {
-    const names = weakSectors.slice(0, 2).map(s => s.sector.name).join(', ');
-    observations.push(`⚠️ Historically weak: ${names} - exercise caution`);
-  }
+  // Data warning
+  observations.push(`Analysis based on ~2 years of data. Past performance ≠ future results`);
 
   return observations;
 }
 
 // Get confidence level label
 export function getConfidenceLabel(confidence: number): { label: string; color: string } {
-  if (confidence >= 80) return { label: 'Very High', color: 'emerald' };
-  if (confidence >= 65) return { label: 'High', color: 'green' };
+  if (confidence >= 70) return { label: 'High', color: 'green' };
   if (confidence >= 50) return { label: 'Moderate', color: 'yellow' };
-  if (confidence >= 35) return { label: 'Low', color: 'orange' };
+  if (confidence >= 30) return { label: 'Low', color: 'orange' };
   return { label: 'Very Low', color: 'red' };
 }

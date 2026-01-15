@@ -1,5 +1,5 @@
 // Monthly Seasonal Analysis API
-// Analyzes 2 years of historical data to find monthly patterns
+// 100% DATA-DRIVEN - Analyzes 2 years of historical data
 
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchHistoricalData, fetchMultipleStocks } from '@/lib/data-fetcher';
@@ -8,8 +8,6 @@ import {
   analyzeStockPattern,
   analyzeMonth,
   StockMonthlyPattern,
-  MonthAnalysisResult,
-  SectorAnalysis
 } from '@/lib/month-analysis';
 
 // Cache for historical analysis (valid for 1 hour)
@@ -47,7 +45,7 @@ export async function GET(request: NextRequest) {
       Date.now() - analysisCache.timestamp > CACHE_DURATION;
 
     if (shouldRefresh) {
-      console.log('Building monthly analysis cache...');
+      console.log('Building monthly analysis cache (data-driven)...');
 
       // Get all unique stocks from sectors
       const allStocks = getAllSectorStocks();
@@ -66,7 +64,7 @@ export async function GET(request: NextRequest) {
         const batchResults = await Promise.all(
           batch.map(async (symbol) => {
             try {
-              const historical = await fetchHistoricalData(symbol, 500); // ~2 years
+              const historical = await fetchHistoricalData(symbol, 730); // 2 years
               if (historical.length >= 200) {
                 const pattern = analyzeStockPattern(symbol, historical);
                 return { symbol, pattern };
@@ -131,7 +129,7 @@ export async function GET(request: NextRequest) {
     if (sectorParam) {
       const sector = getSector(sectorParam);
       if (sector) {
-        const sectorAnalysis = result.topSectors.find(s => s.sector.id === sectorParam);
+        const sectorAnalysis = result.sectors.find(s => s.sector.id === sectorParam);
         if (sectorAnalysis) {
           return NextResponse.json({
             month: result.month,
@@ -194,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     for (const symbol of stocksToAnalyze) {
       try {
-        const historical = await fetchHistoricalData(symbol, 500);
+        const historical = await fetchHistoricalData(symbol, 730);
         if (historical.length >= 200) {
           const pattern = analyzeStockPattern(symbol, historical);
           if (pattern) {
