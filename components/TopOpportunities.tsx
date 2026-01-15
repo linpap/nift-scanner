@@ -31,6 +31,7 @@ export default function TopOpportunities({ onStockClick }: TopOpportunitiesProps
   const [scannedAt, setScannedAt] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
 
   const fetchOpportunities = async (refresh = false) => {
     try {
@@ -48,7 +49,7 @@ export default function TopOpportunities({ onStockClick }: TopOpportunitiesProps
       } else {
         setError(result.error || 'Failed to fetch opportunities');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load opportunities');
     } finally {
       setLoading(false);
@@ -77,7 +78,7 @@ export default function TopOpportunities({ onStockClick }: TopOpportunitiesProps
         {[1, 2, 3, 4, 5].map((level) => (
           <div
             key={level}
-            className={`w-1.5 h-3 rounded-sm ${
+            className={`w-1 h-2.5 rounded-sm ${
               level <= strength
                 ? strength >= 4
                   ? 'bg-emerald-500'
@@ -104,101 +105,89 @@ export default function TopOpportunities({ onStockClick }: TopOpportunitiesProps
     }
   };
 
-  const OpportunityCard = ({ opp, type }: { opp: Opportunity; type: 'buy' | 'sell' }) => (
+  const OpportunityRow = ({ opp, type }: { opp: Opportunity; type: 'buy' | 'sell' }) => (
     <div
-      className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg hover:bg-gray-700/50 transition cursor-pointer"
+      className="flex items-center justify-between py-3 px-4 hover:bg-gray-800/50 rounded-lg transition cursor-pointer border-b border-gray-800/50 last:border-0"
       onClick={() => handleStockClick(opp.symbol)}
     >
       <div className="flex items-center gap-3">
         <div
-          className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center text-xs font-bold ${
+          className={`w-8 h-8 rounded-md flex items-center justify-center text-[10px] font-bold ${
             type === 'buy'
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+              ? 'bg-emerald-500/20 text-emerald-400'
+              : 'bg-red-500/20 text-red-400'
           }`}
         >
-          <span>{type === 'buy' ? 'BUY' : 'SELL'}</span>
+          {type === 'buy' ? 'BUY' : 'SELL'}
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-white hover:text-emerald-400 transition">{opp.symbol}</span>
-            <span className={`text-[9px] px-1 py-0.5 rounded ${
-              opp.daysAgo === 0 ? 'bg-emerald-500/30 text-emerald-300' : 'bg-gray-600/50 text-gray-400'
+            <span className="font-semibold text-white text-sm">{opp.symbol}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+              opp.daysAgo === 0
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'bg-gray-700 text-gray-400'
             }`}>
               {formatDaysAgo(opp.daysAgo)}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="font-mono">{opp.price.toFixed(2)}</span>
-            <span className={opp.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-              {opp.changePercent >= 0 ? '+' : ''}{opp.changePercent.toFixed(2)}%
-            </span>
+          <div className="text-xs text-gray-500">
+            <span className="font-mono">{opp.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
           </div>
         </div>
       </div>
-      <div className="flex flex-col items-end gap-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-500 uppercase">Strength</span>
-          {renderStrengthBars(opp.strength)}
+
+      <div className="flex items-center gap-4">
+        <div className={`text-sm font-medium ${opp.changePercent >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          {opp.changePercent >= 0 ? '+' : ''}{opp.changePercent.toFixed(2)}%
         </div>
-        <span
-          className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-medium ${
-            opp.trend === 'bullish'
-              ? 'bg-emerald-500/20 text-emerald-400'
-              : opp.trend === 'bearish'
-              ? 'bg-red-500/20 text-red-400'
-              : 'bg-gray-500/20 text-gray-400'
-          }`}
-        >
-          {opp.trend}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          {renderStrengthBars(opp.strength)}
+          <span className="text-[9px] text-gray-500 uppercase">{opp.trend}</span>
+        </div>
       </div>
     </div>
   );
 
-  const ExpandCollapseIcon = () => (
-    <button
-      onClick={() => setIsExpanded(!isExpanded)}
-      className="p-1 rounded hover:bg-gray-700 transition text-gray-400 hover:text-white"
-      title={isExpanded ? 'Collapse' : 'Expand'}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
-  );
+  const buyCount = data?.buy?.length || 0;
+  const sellCount = data?.sell?.length || 0;
 
   return (
-    <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <ExpandCollapseIcon />
+    <div className="bg-gray-900/50 rounded-xl border border-gray-800 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-800">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1 rounded hover:bg-gray-700 transition text-gray-400 hover:text-white"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
           <div>
             <h2 className="text-lg font-bold text-white">Top Opportunities</h2>
-            {isExpanded && (
-              <p className="text-xs text-gray-500">
-                Signals from last 7 days across 180+ F&O stocks
-              </p>
-            )}
+            <p className="text-xs text-gray-500">Last 7 days • 180+ F&O stocks</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {isExpanded && scannedAt && (
-            <span className="text-[10px] text-gray-500">
-              Scanned: {formatTime(scannedAt)}
+
+        <div className="flex items-center gap-3">
+          {scannedAt && (
+            <span className="text-[10px] text-gray-500 hidden sm:block">
+              {formatTime(scannedAt)}
             </span>
           )}
           <button
             onClick={() => fetchOpportunities(true)}
             disabled={isRefreshing}
-            className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition text-gray-400 hover:text-white disabled:opacity-50"
-            title="Refresh scan"
+            className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition text-gray-400 hover:text-white disabled:opacity-50"
+            title="Refresh"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -228,51 +217,71 @@ export default function TopOpportunities({ onStockClick }: TopOpportunitiesProps
             <div className="text-center text-red-400 py-8">{error}</div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Buy Signals */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    <span className="text-sm font-semibold text-emerald-400">Buy Signals</span>
-                    <span className="text-xs text-gray-500">({data?.buy.length || 0})</span>
-                  </div>
-                  <div className="space-y-2">
-                    {data?.buy && data.buy.length > 0 ? (
-                      data.buy.map((opp) => (
-                        <OpportunityCard key={opp.symbol} opp={opp} type="buy" />
-                      ))
-                    ) : (
-                      <div className="text-center text-gray-500 py-4 text-sm">
-                        No buy signals found
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Sell Signals */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span className="text-sm font-semibold text-red-400">Sell Signals</span>
-                    <span className="text-xs text-gray-500">({data?.sell.length || 0})</span>
-                  </div>
-                  <div className="space-y-2">
-                    {data?.sell && data.sell.length > 0 ? (
-                      data.sell.map((opp) => (
-                        <OpportunityCard key={opp.symbol} opp={opp} type="sell" />
-                      ))
-                    ) : (
-                      <div className="text-center text-gray-500 py-4 text-sm">
-                        No sell signals found
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {/* Tabs */}
+              <div className="flex border-b border-gray-800">
+                <button
+                  onClick={() => setActiveTab('buy')}
+                  className={`flex-1 py-3 px-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                    activeTab === 'buy'
+                      ? 'text-emerald-400 border-b-2 border-emerald-400 bg-emerald-500/5'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                  Buy Signals
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    activeTab === 'buy' ? 'bg-emerald-500/20' : 'bg-gray-700'
+                  }`}>
+                    {buyCount}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('sell')}
+                  className={`flex-1 py-3 px-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                    activeTab === 'sell'
+                      ? 'text-red-400 border-b-2 border-red-400 bg-red-500/5'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                  Sell Signals
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    activeTab === 'sell' ? 'bg-red-500/20' : 'bg-gray-700'
+                  }`}>
+                    {sellCount}
+                  </span>
+                </button>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-gray-800">
-                <p className="text-[10px] text-gray-600 text-center">
-                  Signals based on Hybrid Supertrend + EMA crossover strategy. Not financial advice.
+              {/* Content */}
+              <div className="divide-y divide-gray-800/50">
+                {activeTab === 'buy' ? (
+                  data?.buy && data.buy.length > 0 ? (
+                    data.buy.map((opp) => (
+                      <OpportunityRow key={opp.symbol} opp={opp} type="buy" />
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-8 text-sm">
+                      No buy signals found
+                    </div>
+                  )
+                ) : (
+                  data?.sell && data.sell.length > 0 ? (
+                    data.sell.map((opp) => (
+                      <OpportunityRow key={opp.symbol} opp={opp} type="sell" />
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-8 text-sm">
+                      No sell signals found
+                    </div>
+                  )
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-4 py-3 bg-gray-800/30 border-t border-gray-800">
+                <p className="text-[10px] text-gray-500 text-center">
+                  Based on Hybrid Supertrend + EMA crossover • Not financial advice
                 </p>
               </div>
             </>
