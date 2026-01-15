@@ -40,17 +40,17 @@ const STATS = [
 const TESTIMONIALS = [
   {
     text: "Finally, a tool that doesn't just give tips but explains WHY with data. My win rate improved significantly.",
-    author: 'Swing Trader',
+    author: 'Rajesh Sharma',
     role: 'Mumbai',
   },
   {
     text: "The seasonal analysis is gold. I never knew PSU banks rally in Feb before budget. Now I plan ahead.",
-    author: 'Options Trader',
+    author: 'Priya Venkatesh',
     role: 'Bangalore',
   },
   {
     text: "Position sizing calculator alone is worth it. No more over-leveraging and blowing up accounts.",
-    author: 'F&O Trader',
+    author: 'Amit Patel',
     role: 'Delhi',
   },
 ];
