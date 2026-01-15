@@ -60,6 +60,12 @@ const COMMODITY_SYMBOLS: Record<string, { symbol: string; name: string; currency
 
   // Palm Oil - using HUL as proxy (major user)
   palmoil: { symbol: 'HINDUNILVR.NS', name: 'Palm Oil (HUL proxy)', currency: 'INR' },
+
+  // US Chip/Semiconductor Stocks
+  nvidia: { symbol: 'NVDA', name: 'NVIDIA', currency: 'USD' },
+  amd: { symbol: 'AMD', name: 'AMD', currency: 'USD' },
+  intel: { symbol: 'INTC', name: 'Intel', currency: 'USD' },
+  smh: { symbol: 'SMH', name: 'Semiconductor ETF (SOX)', currency: 'USD' },
 };
 
 // Indian stock symbols to track
@@ -81,10 +87,28 @@ const INDIAN_STOCKS: Record<string, { symbol: string; name: string }> = {
   // Copper
   hindcopper: { symbol: 'HINDCOPPER.NS', name: 'Hindustan Copper' },
 
-  // IT (Rupee plays)
+  // IT Services (Rupee plays + chip clients)
   tcs: { symbol: 'TCS.NS', name: 'TCS' },
   infy: { symbol: 'INFY.NS', name: 'Infosys' },
   wipro: { symbol: 'WIPRO.NS', name: 'Wipro' },
+  hcltech: { symbol: 'HCLTECH.NS', name: 'HCL Tech' },
+  ltim: { symbol: 'LTIM.NS', name: 'LTIMindtree' },
+
+  // Tech Design & Engineering (Chip correlation)
+  tataelxsi: { symbol: 'TATAELXSI.NS', name: 'Tata Elxsi' },
+  kpit: { symbol: 'KPITTECH.NS', name: 'KPIT Technologies' },
+  ltts: { symbol: 'LTTS.NS', name: 'L&T Technology Services' },
+  cyient: { symbol: 'CYIENT.NS', name: 'Cyient' },
+  persistent: { symbol: 'PERSISTENT.NS', name: 'Persistent Systems' },
+  coforge: { symbol: 'COFORGE.NS', name: 'Coforge' },
+
+  // Electronics Manufacturing (Chip demand)
+  dixon: { symbol: 'DIXON.NS', name: 'Dixon Technologies' },
+  amber: { symbol: 'AMBER.NS', name: 'Amber Enterprises' },
+
+  // Auto Tech (Semiconductor exposure)
+  sonacoms: { symbol: 'SONACOMS.NS', name: 'Sona BLW' },
+  motherson: { symbol: 'MOTHERSON.NS', name: 'Samvardhana Motherson' },
 
   // Airlines
   indigo: { symbol: 'INDIGO.NS', name: 'IndiGo' },
@@ -530,6 +554,46 @@ function calculateSignals(
     });
   }
 
+  // US Chip/Semiconductor signal (NVIDIA as primary indicator)
+  const nvidia = commodities.nvidia;
+  const smh = commodities.smh;
+  const chipMove = nvidia || smh;
+  if (chipMove) {
+    const direction = chipMove.changePercent > 1 ? 'up' : chipMove.changePercent < -1 ? 'down' : 'neutral';
+    signals.push({
+      factor: 'US Chips (NVIDIA/SOX)',
+      direction,
+      change: chipMove.changePercent,
+      beneficiaries: direction === 'up'
+        ? ['Tata Elxsi', 'KPIT', 'LTTS', 'Dixon', 'TCS', 'Infosys']
+        : [],
+      losers: direction === 'down'
+        ? ['Tata Elxsi', 'KPIT', 'LTTS', 'Dixon']
+        : [],
+      insight: direction === 'up'
+        ? 'US chip rally → Indian tech design & IT services benefit next day'
+        : direction === 'down'
+        ? 'US chip selloff → pressure on Indian tech stocks'
+        : 'US chips stable',
+    });
+  }
+
+  // AMD signal (if different from NVIDIA)
+  const amd = commodities.amd;
+  if (amd && Math.abs(amd.changePercent) > 2) {
+    const direction = amd.changePercent > 2 ? 'up' : amd.changePercent < -2 ? 'down' : 'neutral';
+    signals.push({
+      factor: 'AMD',
+      direction,
+      change: amd.changePercent,
+      beneficiaries: direction === 'up' ? ['Tata Elxsi', 'KPIT', 'Cyient'] : [],
+      losers: direction === 'down' ? ['Tech design stocks'] : [],
+      insight: direction === 'up'
+        ? 'AMD rally signals strong AI/datacenter demand'
+        : 'AMD weakness suggests chip demand concerns',
+    });
+  }
+
   return signals;
 }
 
@@ -569,6 +633,27 @@ const CORRELATION_CONFIG: Array<{
   { commodity: 'usdinr', stock: 'Infosys', stockKey: 'infy', direction: 'positive', strength: 8, passThrough: 100, description: '1% depreciation = ~1% revenue boost' },
   { commodity: 'usdinr', stock: 'Wipro', stockKey: 'wipro', direction: 'positive', strength: 7, passThrough: 90, description: '1% depreciation = ~1% revenue boost' },
 
+  // US Chips (NVIDIA) - Indian Tech Design (strongest correlation)
+  { commodity: 'nvidia', stock: 'Tata Elxsi', stockKey: 'tataelxsi', direction: 'positive', strength: 9, passThrough: 60, description: 'Embedded systems & chip design services' },
+  { commodity: 'nvidia', stock: 'KPIT Technologies', stockKey: 'kpit', direction: 'positive', strength: 9, passThrough: 55, description: 'Automotive semiconductor software' },
+  { commodity: 'nvidia', stock: 'L&T Technology Services', stockKey: 'ltts', direction: 'positive', strength: 8, passThrough: 50, description: 'Chip design engineering services' },
+  { commodity: 'nvidia', stock: 'Cyient', stockKey: 'cyient', direction: 'positive', strength: 8, passThrough: 45, description: 'Semiconductor design services' },
+  { commodity: 'nvidia', stock: 'Dixon Technologies', stockKey: 'dixon', direction: 'positive', strength: 7, passThrough: 40, description: 'Electronics manufacturing, chip assembly' },
+
+  // US Chips (SMH/SOX) - IT Services (moderate correlation)
+  { commodity: 'smh', stock: 'TCS', stockKey: 'tcs', direction: 'positive', strength: 6, passThrough: 30, description: 'Tech services to semiconductor clients' },
+  { commodity: 'smh', stock: 'Infosys', stockKey: 'infy', direction: 'positive', strength: 6, passThrough: 30, description: 'Tech services to semiconductor clients' },
+  { commodity: 'smh', stock: 'HCL Tech', stockKey: 'hcltech', direction: 'positive', strength: 6, passThrough: 30, description: 'Tech services, AI/cloud projects' },
+  { commodity: 'smh', stock: 'Persistent Systems', stockKey: 'persistent', direction: 'positive', strength: 7, passThrough: 35, description: 'Product engineering, tech platforms' },
+
+  // AMD - Tech Design (AI/datacenter focus)
+  { commodity: 'amd', stock: 'Tata Elxsi', stockKey: 'tataelxsi', direction: 'positive', strength: 8, passThrough: 50, description: 'Embedded systems design services' },
+  { commodity: 'amd', stock: 'KPIT Technologies', stockKey: 'kpit', direction: 'positive', strength: 8, passThrough: 50, description: 'Auto chip software stack' },
+  { commodity: 'amd', stock: 'Coforge', stockKey: 'coforge', direction: 'positive', strength: 6, passThrough: 30, description: 'Digital engineering services' },
+
+  // Auto Tech (chip demand in EVs)
+  { commodity: 'nvidia', stock: 'Sona BLW', stockKey: 'sonacoms', direction: 'positive', strength: 7, passThrough: 35, description: 'EV drivetrain electronics' },
+  { commodity: 'nvidia', stock: 'Samvardhana Motherson', stockKey: 'motherson', direction: 'positive', strength: 6, passThrough: 30, description: 'Auto electronics & wiring' },
 ];
 
 function calculateOpportunities(

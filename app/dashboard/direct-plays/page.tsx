@@ -19,6 +19,8 @@ const STOCK_KEY_TO_TICKER: Record<string, string> = {
   tcs: 'TCS',
   infy: 'INFY',
   wipro: 'WIPRO',
+  hcltech: 'HCLTECH',
+  ltim: 'LTIM',
   tatasteel: 'TATASTEEL',
   jswsteel: 'JSWSTEEL',
   sail: 'SAIL',
@@ -29,6 +31,19 @@ const STOCK_KEY_TO_TICKER: Record<string, string> = {
   gujgas: 'GUJGASLTD',
   gail: 'GAIL',
   petronet: 'PETRONET',
+  // Tech Design & Engineering
+  tataelxsi: 'TATAELXSI',
+  kpit: 'KPITTECH',
+  ltts: 'LTTS',
+  cyient: 'CYIENT',
+  persistent: 'PERSISTENT',
+  coforge: 'COFORGE',
+  // Electronics Manufacturing
+  dixon: 'DIXON',
+  amber: 'AMBER',
+  // Auto Tech
+  sonacoms: 'SONACOMS',
+  motherson: 'MOTHERSON',
 };
 
 interface CommodityData {
@@ -104,6 +119,13 @@ const CORRELATIONS = [
   // Currency & Shipping
   { factor: 'Rupee ↓', stocks: 'TCS, Infosys, Wipro', direction: 'Every 1% depreciation = ~1% revenue boost', type: 'inverse-inr', commodityKey: 'usdinr' },
   { factor: 'BDI ↑', stocks: 'SCI, GE Shipping', direction: 'Higher freight = direct revenue boost', type: 'positive', commodityKey: 'baltic' },
+
+  // US Chips & Tech
+  { factor: 'NVIDIA ↑', stocks: 'Tata Elxsi, KPIT, LTTS', direction: 'Chip design services benefit from AI boom', type: 'positive', commodityKey: 'nvidia' },
+  { factor: 'SOX/SMH ↑', stocks: 'TCS, Infosys, HCL Tech', direction: 'Tech services to semiconductor clients', type: 'positive', commodityKey: 'smh' },
+  { factor: 'AMD ↑', stocks: 'Tata Elxsi, KPIT, Cyient', direction: 'AI/datacenter demand signals', type: 'positive', commodityKey: 'amd' },
+  { factor: 'Chips ↑', stocks: 'Dixon, Amber', direction: 'Electronics manufacturing demand', type: 'positive', commodityKey: 'nvidia' },
+  { factor: 'Chips ↑', stocks: 'Sona BLW, Motherson', direction: 'Auto semiconductor demand (EVs)', type: 'positive', commodityKey: 'nvidia' },
 ];
 
 // Confidence Meter Component
@@ -305,9 +327,9 @@ export default function DirectPlaysPage() {
           <div className="max-w-[1400px] mx-auto px-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-white">Commodity Correlations</h1>
+                <h1 className="text-2xl font-bold text-white">Global Market Correlations</h1>
                 <p className="text-gray-400 text-sm">
-                  Overnight commodity moves & correlated stock opportunities
+                  Overnight commodity & US chip moves → Indian stock opportunities
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -426,7 +448,7 @@ export default function DirectPlaysPage() {
 
       {/* Commodity Prices Grid */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Overnight Commodity Prices</h2>
+        <h2 className="text-xl font-semibold mb-4">Overnight Global Markets (Commodities & US Tech)</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {data?.commodities && Object.entries(data.commodities).map(([key, commodity]) => {
             if (!commodity) return null;
@@ -535,7 +557,7 @@ export default function DirectPlaysPage() {
       {/* Quick Reference */}
       <div className="bg-gray-800 rounded-lg p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Quick Reference - What to Watch</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <h3 className="text-green-400 font-semibold mb-2">If Markets Open Green</h3>
             <ul className="text-sm text-gray-300 space-y-1">
@@ -552,6 +574,15 @@ export default function DirectPlaysPage() {
               <li>• Gas down → Buy CGD stocks (Gujarat Gas, IGL, MGL)</li>
               <li>• Cotton down → Buy textile stocks (Vardhman, Page)</li>
               <li>• Watch for inverse plays</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-blue-400 font-semibold mb-2">US Chips Rally (NVIDIA/AMD)</h3>
+            <ul className="text-sm text-gray-300 space-y-1">
+              <li>• NVIDIA up → Buy Tata Elxsi, KPIT, LTTS</li>
+              <li>• SOX/SMH up → Buy TCS, Infosys, HCL Tech</li>
+              <li>• AMD up → Buy Cyient, Persistent</li>
+              <li>• Chip demand → Buy Dixon, Sona BLW</li>
             </ul>
           </div>
         </div>
