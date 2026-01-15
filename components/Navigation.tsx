@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Scanner', icon: '📊', description: 'Real-time stock scanner' },
+  { href: '/fno-strategy', label: 'F&O Strategy', icon: '🎯', description: '70% win rate strategies' },
   { href: '/month-analysis', label: 'Seasonal', icon: '📅', description: 'Monthly patterns' },
   { href: '/direct-plays', label: 'Commodities', icon: '🛢️', description: 'Commodity correlations' },
   { href: '/secrets', label: 'Patterns', icon: '🔮', description: 'Hidden patterns' },
