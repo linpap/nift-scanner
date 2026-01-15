@@ -346,7 +346,7 @@ export default function MonthAnalysisPage() {
       <main className="flex-1">
         {/* Page Header */}
         <div className="bg-gray-900 border-b border-gray-800 py-6">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-[1400px] mx-auto px-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-white">Seasonal Analysis</h1>
@@ -376,7 +376,7 @@ export default function MonthAnalysisPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto p-4">
+        <div className="max-w-[1400px] mx-auto p-4">
         {/* Loading State */}
         {loading && !data && (
           <div className="text-center py-20">

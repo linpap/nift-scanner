@@ -341,7 +341,7 @@ export default function SecretsPage() {
     <div className="min-h-screen bg-gray-950 flex flex-col">
       <Navigation />
 
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-4 md:p-8 max-w-[1400px] mx-auto w-full">
         {/* Page Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3">

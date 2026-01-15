@@ -266,7 +266,7 @@ export default function DirectPlaysPage() {
       <main className="flex-1">
         {/* Page Header */}
         <div className="bg-gray-900 border-b border-gray-800 py-6">
-          <div className="max-w-7xl mx-auto px-4">
+          <div className="max-w-[1400px] mx-auto px-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-white">Commodity Correlations</h1>
@@ -297,7 +297,7 @@ export default function DirectPlaysPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="max-w-[1400px] mx-auto px-4 py-6">
           {error && (
         <div className="bg-red-900/30 border border-red-500 text-red-400 p-4 rounded-lg mb-6">
           {error}

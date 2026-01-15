@@ -580,7 +580,7 @@ export default function StockChart({ symbol, onClose }: StockChartProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-lg w-full max-w-7xl mx-4 overflow-hidden shadow-2xl border border-gray-700"
+        className="bg-gray-900 rounded-lg w-full max-w-[1400px] mx-4 overflow-hidden shadow-2xl border border-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
