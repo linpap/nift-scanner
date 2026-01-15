@@ -1,6 +1,35 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import StockLink from '@/components/StockLink';
+
+// Stock key to ticker mapping
+const STOCK_KEY_TO_TICKER: Record<string, string> = {
+  hindzinc: 'HINDZINC',
+  ongc: 'ONGC',
+  oilindia: 'OIL',
+  bpcl: 'BPCL',
+  hpcl: 'HINDPETRO',
+  ioc: 'IOC',
+  indigo: 'INDIGO',
+  asianpaints: 'ASIANPAINT',
+  hindalco: 'HINDALCO',
+  nalco: 'NATIONALUM',
+  hindcopper: 'HINDCOPPER',
+  tcs: 'TCS',
+  infy: 'INFY',
+  wipro: 'WIPRO',
+  tatasteel: 'TATASTEEL',
+  jswsteel: 'JSWSTEEL',
+  sail: 'SAIL',
+  coalindia: 'COALINDIA',
+  titan: 'TITAN',
+  igl: 'IGL',
+  mgl: 'MGL',
+  gujgas: 'GUJGASLTD',
+  gail: 'GAIL',
+  petronet: 'PETRONET',
+};
 
 interface CommodityData {
   symbol: string;
@@ -133,7 +162,19 @@ function OpportunityCard({ opp, stock }: { opp: Opportunity; stock: CommodityDat
           >
             {opp.action}
           </span>
-          <h3 className="text-xl font-bold mt-2">{opp.stock}</h3>
+          <h3 className="text-xl font-bold mt-2">
+            {STOCK_KEY_TO_TICKER[opp.stockKey] ? (
+              <StockLink
+                symbol={STOCK_KEY_TO_TICKER[opp.stockKey]}
+                name={opp.stock}
+                className="text-xl"
+              >
+                {opp.stock}
+              </StockLink>
+            ) : (
+              opp.stock
+            )}
+          </h3>
         </div>
         <div className="text-right">
           {stock && (
@@ -472,7 +513,15 @@ export default function DirectPlaysPage() {
                   'border-gray-700 bg-gray-800'
                 }`}
               >
-                <div className="font-semibold text-sm">{stock.name}</div>
+                <div className="font-semibold text-sm">
+                  {STOCK_KEY_TO_TICKER[key] ? (
+                    <StockLink symbol={STOCK_KEY_TO_TICKER[key]} name={stock.name}>
+                      {stock.name}
+                    </StockLink>
+                  ) : (
+                    stock.name
+                  )}
+                </div>
                 <div className="text-lg font-bold">
                   ₹{stock.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </div>
