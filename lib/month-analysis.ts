@@ -399,8 +399,18 @@ export function analyzeMonth(
   const sortedSectors = [...sectorAnalyses]
     .sort((a, b) => b.avgReturn - a.avgReturn);
 
+  // Deduplicate recommendations (some stocks appear in multiple sectors)
+  // Keep the one with highest confidence
+  const uniqueRecommendations = new Map<string, StockRecommendation>();
+  allRecommendations.forEach(rec => {
+    const existing = uniqueRecommendations.get(rec.symbol);
+    if (!existing || rec.confidence > existing.confidence) {
+      uniqueRecommendations.set(rec.symbol, rec);
+    }
+  });
+
   // Sort all recommendations by confidence
-  const sortedRecommendations = [...allRecommendations]
+  const sortedRecommendations = Array.from(uniqueRecommendations.values())
     .sort((a, b) => b.confidence - a.confidence);
 
   // Generate observations from actual data

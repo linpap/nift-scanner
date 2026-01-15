@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import StockLink from '@/components/StockLink';
 
 interface StockRecommendation {
   symbol: string;
@@ -143,7 +144,7 @@ function SectorCard({ sector, expanded, onToggle }: {
             {sector.topStocks.map((stock) => (
               <div key={stock.symbol} className="bg-gray-900 rounded p-3">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-mono font-bold text-emerald-400">{stock.symbol}</span>
+                  <StockLink symbol={stock.symbol} />
                   <ConfidenceMeter value={stock.confidence} />
                 </div>
                 <div className="flex gap-4 text-xs text-gray-400 mb-2">
@@ -200,7 +201,7 @@ function StockRow({ stock, expanded, onToggle }: {
         onClick={onToggle}
       >
         <td className="py-3 px-4">
-          <span className="font-mono font-bold text-emerald-400">{stock.symbol}</span>
+          <StockLink symbol={stock.symbol} />
         </td>
         <td className="py-3 px-4">
           <span className="text-xs bg-gray-700 px-2 py-1 rounded">{stock.sectorName}</span>
@@ -446,9 +447,7 @@ export default function MonthAnalysisPage() {
                       }`}>
                         #{index + 1}
                       </span>
-                      <span className="font-mono font-bold text-emerald-400 text-lg">
-                        {stock.symbol}
-                      </span>
+                      <StockLink symbol={stock.symbol} className="text-lg" />
                     </div>
                     <div className="text-xs text-gray-400 mb-2">{stock.sectorName}</div>
                     <div className="space-y-1">
