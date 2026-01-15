@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Navigation from '@/components/Navigation';
-import Footer from '@/components/Footer';
 
 interface CommodityData {
   symbol: string;
@@ -260,11 +258,8 @@ export default function DirectPlaysPage() {
   const shortOpps = data?.opportunities?.filter(o => o.action === 'SHORT') || [];
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <Navigation />
-
-      <main className="flex-1">
-        {/* Page Header */}
+    <>
+      {/* Page Header */}
         <div className="bg-gray-900 border-b border-gray-800 py-6">
           <div className="max-w-[1400px] mx-auto px-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -514,9 +509,6 @@ export default function DirectPlaysPage() {
       </div>
 
         </div>
-      </main>
-
-      <Footer />
-    </div>
+    </>
   );
 }

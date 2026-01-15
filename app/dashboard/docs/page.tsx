@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Navigation from '@/components/Navigation';
-import Footer from '@/components/Footer';
 
 interface DocSection {
   id: string;
@@ -431,11 +429,7 @@ export default function DocsPage() {
   const currentSection = DOC_SECTIONS.find(s => s.id === activeSection) || DOC_SECTIONS[0];
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <Navigation />
-
-      <main className="flex-1">
-        <div className="max-w-[1400px] mx-auto px-4 py-8">
+    <div className="max-w-[1400px] mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">Documentation</h1>
@@ -482,10 +476,6 @@ export default function DocsPage() {
               </div>
             </div>
           </div>
-        </div>
-      </main>
-
-      <Footer />
     </div>
   );
 }

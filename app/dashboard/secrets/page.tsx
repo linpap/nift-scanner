@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Navigation from '@/components/Navigation';
-import Footer from '@/components/Footer';
 
 interface MarketData {
   vix?: number;
@@ -338,11 +336,8 @@ export default function SecretsPage() {
   const daySignal = getDaySignal();
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <Navigation />
-
-      <main className="flex-1 p-4 md:p-8 max-w-[1400px] mx-auto w-full">
-        {/* Page Header */}
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto w-full">
+      {/* Page Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3">
             <span className="text-4xl">🔮</span>
@@ -678,13 +673,10 @@ export default function SecretsPage() {
         </div>
       </div>
 
-        {/* Data Source Note */}
-        <div className="mt-10 text-center text-gray-500 text-sm">
-          <p>Analysis based on 2 years of Nifty 100 data (98 stocks, ~497 trading days each, 48,000+ data points)</p>
-        </div>
-      </main>
-
-      <Footer />
+      {/* Data Source Note */}
+      <div className="mt-10 text-center text-gray-500 text-sm">
+        <p>Analysis based on 2 years of Nifty 100 data (98 stocks, ~497 trading days each, 48,000+ data points)</p>
+      </div>
     </div>
   );
 }

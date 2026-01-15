@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Navigation from '@/components/Navigation';
-import Footer from '@/components/Footer';
 
 interface MarketData {
   vix: number;
@@ -207,10 +205,7 @@ export default function FNOStrategyPage() {
   const daySignal = getDaySignal();
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <Navigation />
-
-      <main className="flex-1 p-4 md:p-8 max-w-[1400px] mx-auto w-full">
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto w-full">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -562,9 +557,6 @@ export default function FNOStrategyPage() {
             </div>
           </div>
         </div>
-      </main>
-
-      <Footer />
     </div>
   );
 }
