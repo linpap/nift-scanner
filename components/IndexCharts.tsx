@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createChart, ColorType, IChartApi, CandlestickData, Time, AreaSeries, CandlestickSeries, LineSeries, HistogramSeries, HistogramData, ISeriesApi } from 'lightweight-charts';
 import { calculateAllIndicators, type OHLCV, type IndicatorData } from '@/lib/chart-indicators';
 import { FO_STOCKS } from '@/lib/fo-stocks';
+import { useDataSource, DataSourceType } from '@/contexts/DataSourceContext';
 
 // All searchable symbols including indices and F&O stocks
 const ALL_SYMBOLS = [
@@ -226,6 +227,9 @@ function ExpandedChart({ symbol, name, onClose, onSymbolChange }: ExpandedChartP
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isLive, setIsLive] = useState(true);
 
+  // Global data source context
+  const { setDataSource: setGlobalDataSource, setLastUpdated: setGlobalLastUpdated } = useDataSource();
+
   // Symbol search state
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -300,7 +304,7 @@ function ExpandedChart({ symbol, name, onClose, onSymbolChange }: ExpandedChartP
         const historical: IndexData[] = data.data;
         historicalDataRef.current = historical;
 
-        // Update last updated time
+        // Update last updated time (local only during initial load)
         setLastUpdated(new Date(data.timestamp || Date.now()));
 
         // Set index info
@@ -551,8 +555,20 @@ function ExpandedChart({ symbol, name, onClose, onSymbolChange }: ExpandedChartP
     };
   }, [symbol, name, timeframe, showIndicators, showEma20, showEma50, showEma200Cloud, showHybridST]);
 
-  // State for data source indicator
-  const [dataSource, setDataSource] = useState<'nse' | 'nse-direct' | 'yahoo' | null>(null);
+  // State for data source indicator (local state for this chart)
+  const [dataSource, setLocalDataSource] = useState<DataSourceType>(null);
+
+  // Update both local and global data source
+  const setDataSource = useCallback((source: DataSourceType) => {
+    setLocalDataSource(source);
+    setGlobalDataSource(source);
+  }, [setGlobalDataSource]);
+
+  // Update both local and global last updated time
+  const updateLastUpdated = useCallback((date: Date) => {
+    setLastUpdated(date);
+    setGlobalLastUpdated(date);
+  }, [setGlobalLastUpdated]);
 
   // Auto-refresh effect - uses real-time NSE data for price updates
   useEffect(() => {
@@ -573,7 +589,7 @@ function ExpandedChart({ symbol, name, onClose, onSymbolChange }: ExpandedChartP
         if (quoteData.success && quoteData.data) {
           const quote = quoteData.data;
           setDataSource(quote.source);
-          setLastUpdated(new Date(quoteData.timestamp));
+          updateLastUpdated(new Date(quoteData.timestamp));
           setIndexInfo({
             symbol: name,
             name,
@@ -627,7 +643,7 @@ function ExpandedChart({ symbol, name, onClose, onSymbolChange }: ExpandedChartP
         refreshIntervalRef.current = null;
       }
     };
-  }, [isLive, symbol, timeframe, name]);
+  }, [isLive, symbol, timeframe, name, setDataSource, updateLastUpdated]);
 
   // Calculate label positions from chart coordinates
   const updateLabelPositions = useCallback(() => {

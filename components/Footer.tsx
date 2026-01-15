@@ -1,6 +1,12 @@
+'use client';
+
 import Link from 'next/link';
+import { useDataSource, getDataSourceDisplay } from '@/contexts/DataSourceContext';
 
 export default function Footer() {
+  const { dataSource, lastUpdated } = useDataSource();
+  const { label, isRealtime, color } = getDataSourceDisplay(dataSource);
+
   return (
     <footer className="bg-gray-900 border-t border-gray-800 mt-auto">
       <div className="max-w-[1400px] mx-auto px-4 py-8">
@@ -83,11 +89,21 @@ export default function Footer() {
             © {new Date().getFullYear()} STOCK Scanner. For educational purposes only.
           </div>
           <div className="flex items-center gap-6 text-sm">
-            <span className="text-gray-500">
-              Data: Yahoo Finance (~15 min delay)
-            </span>
+            <div className="flex items-center gap-2">
+              {isRealtime && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              )}
+              <span className={color}>
+                Data: {label}
+              </span>
+              {lastUpdated && (
+                <span className="text-gray-600 text-xs">
+                  ({lastUpdated.toLocaleTimeString()})
+                </span>
+              )}
+            </div>
             <span className="text-yellow-500/80 text-xs">
-              ⚠️ Not financial advice
+              Not financial advice
             </span>
           </div>
         </div>
