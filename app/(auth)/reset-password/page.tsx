@@ -1,19 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-export default function SignupPage() {
-  const [email, setEmail] = useState('');
+export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const router = useRouter();
   const supabase = createClient();
 
-  const handleSignup = async (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if we have a valid session from the reset link
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Invalid or expired reset link. Please request a new one.');
+      }
+    };
+    checkSession();
+  }, [supabase.auth]);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -29,12 +41,8 @@ export default function SignupPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
-      },
+    const { error } = await supabase.auth.updateUser({
+      password: password,
     });
 
     if (error) {
@@ -43,6 +51,10 @@ export default function SignupPage() {
     } else {
       setSuccess(true);
       setLoading(false);
+      // Redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
     }
   };
 
@@ -56,16 +68,10 @@ export default function SignupPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Check your email!</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">Password updated!</h2>
             <p className="text-gray-400 mb-6">
-              We&apos;ve sent a confirmation link to <span className="text-white">{email}</span>
+              Your password has been successfully updated. Redirecting to dashboard...
             </p>
-            <Link
-              href="/login"
-              className="inline-block px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors"
-            >
-              Back to Login
-            </Link>
           </div>
         </div>
       </div>
@@ -85,10 +91,10 @@ export default function SignupPage() {
           </Link>
         </div>
 
-        {/* Signup Card */}
+        {/* Reset Card */}
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-8">
-          <h1 className="text-2xl font-bold text-white mb-2">Create your account</h1>
-          <p className="text-gray-400 mb-6">Start trading with data-driven strategies</p>
+          <h1 className="text-2xl font-bold text-white mb-2">Set new password</h1>
+          <p className="text-gray-400 mb-6">Your new password must be different from previous passwords.</p>
 
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6">
@@ -96,24 +102,10 @@ export default function SignupPage() {
             </div>
           )}
 
-          <form onSubmit={handleSignup} className="space-y-4">
+          <form onSubmit={handleUpdatePassword} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Password
+                New Password
               </label>
               <input
                 type="password"
@@ -144,21 +136,19 @@ export default function SignupPage() {
               disabled={loading}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
             >
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? 'Updating...' : 'Update Password'}
             </button>
           </form>
 
           <p className="text-center text-gray-400 mt-6">
-            Already have an account?{' '}
-            <Link href="/login" className="text-emerald-400 hover:text-emerald-300">
-              Sign in
+            <Link href="/login" className="text-emerald-400 hover:text-emerald-300 flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to login
             </Link>
           </p>
         </div>
-
-        <p className="text-center text-gray-600 text-sm mt-6">
-          By signing up, you agree to our Terms of Service
-        </p>
       </div>
     </div>
   );
