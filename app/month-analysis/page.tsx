@@ -424,6 +424,87 @@ export default function MonthAnalysisPage() {
               </div>
             </section>
 
+            {/* Top 5 Picks for the Month */}
+            <section className="mb-6">
+              <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
+                <span className="text-yellow-400">★</span>
+                Top 5 Picks for {data.monthName}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {data.allRecommendations.slice(0, 5).map((stock, index) => (
+                  <div
+                    key={stock.symbol}
+                    className={`bg-gradient-to-br ${
+                      index === 0 ? 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/50' :
+                      index === 1 ? 'from-gray-400/20 to-gray-500/10 border-gray-400/50' :
+                      index === 2 ? 'from-orange-500/20 to-orange-600/10 border-orange-500/50' :
+                      'from-gray-700/50 to-gray-800/50 border-gray-600/50'
+                    } rounded-lg p-4 border`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-lg font-bold ${
+                        index === 0 ? 'text-yellow-400' :
+                        index === 1 ? 'text-gray-300' :
+                        index === 2 ? 'text-orange-400' :
+                        'text-white'
+                      }`}>
+                        #{index + 1}
+                      </span>
+                      <span className="font-mono font-bold text-emerald-400 text-lg">
+                        {stock.symbol}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400 mb-2">{stock.sectorName}</div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Confidence:</span>
+                        <span className={`font-medium ${
+                          stock.confidence >= 70 ? 'text-green-400' :
+                          stock.confidence >= 50 ? 'text-yellow-400' : 'text-red-400'
+                        }`}>
+                          {stock.confidence}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Avg Return:</span>
+                        <span className={stock.expectedReturn >= 0 ? 'text-green-400' : 'text-red-400'}>
+                          {stock.expectedReturn >= 0 ? '+' : ''}{stock.expectedReturn.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Win Rate:</span>
+                        <span className={stock.winRate >= 50 ? 'text-green-400' : 'text-red-400'}>
+                          {stock.winRate.toFixed(0)}%
+                        </span>
+                      </div>
+                      {stock.currentPrice > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Price:</span>
+                          <span className="text-white">₹{stock.currentPrice.toFixed(0)}</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Historical mini-chart */}
+                    <div className="mt-3 pt-2 border-t border-gray-700">
+                      <div className="text-xs text-gray-500 mb-1">Historical:</div>
+                      <div className="flex gap-1">
+                        {stock.historicalData.slice(-3).map((h, i) => (
+                          <span
+                            key={i}
+                            className={`px-1.5 py-0.5 rounded text-xs flex-1 text-center ${
+                              h.return >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            {h.return >= 0 ? '+' : ''}{h.return.toFixed(0)}%
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
             {/* Stats Bar */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
