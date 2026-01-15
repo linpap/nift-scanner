@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 
 interface CommodityData {
   symbol: string;
@@ -259,58 +260,45 @@ export default function DirectPlaysPage() {
   const shortOpps = data?.opportunities?.filter(o => o.action === 'SHORT') || [];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm mb-2 inline-block">
-            ← Back to Scanner
-          </Link>
-          <h1 className="text-2xl md:text-3xl font-bold">Direct Plays Dashboard</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Commodity-Stock Correlations & Trading Opportunities
-          </p>
-        </div>
-        <div className="text-right flex flex-col items-end gap-2">
-          <div className="flex gap-2">
-            <Link
-              href="/secrets"
-              className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              🔮 Secrets
-            </Link>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all ${
-                loading
-                  ? 'bg-gray-600 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-500 active:scale-95'
-              }`}
-            >
-              {loading ? (
-                <>
-                  <span className="animate-spin">⟳</span>
-                  Fetching...
-                </>
-              ) : (
-                <>
-                  <span>🔄</span>
-                  Refresh Now
-                </>
-              )}
-            </button>
-          </div>
-          <p className="text-gray-500 text-xs">
-            Last fetched: {lastRefresh.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </p>
-          <p className="text-gray-600 text-xs">
-            Auto-refreshes every 2 minutes
-          </p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      <Navigation />
 
-      {error && (
+      <main className="flex-1">
+        {/* Page Header */}
+        <div className="bg-gray-900 border-b border-gray-800 py-6">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Commodity Correlations</h1>
+                <p className="text-gray-400 text-sm">
+                  Overnight commodity moves & correlated stock opportunities
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right text-sm">
+                  <p className="text-gray-500">
+                    Updated: {lastRefresh.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="text-gray-600 text-xs">Auto-refresh: 2 min</p>
+                </div>
+                <button
+                  onClick={fetchData}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    loading
+                      ? 'bg-gray-700 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  {loading ? 'Fetching...' : 'Refresh'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {error && (
         <div className="bg-red-900/30 border border-red-500 text-red-400 p-4 rounded-lg mb-6">
           {error}
         </div>
@@ -525,11 +513,10 @@ export default function DirectPlaysPage() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="text-center text-gray-500 text-sm">
-        <p>Data from Yahoo Finance. Prices may be delayed.</p>
-        <p className="mt-1">For educational purposes only. Not financial advice.</p>
-      </div>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

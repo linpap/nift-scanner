@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 
 interface MarketData {
   vix?: number;
@@ -337,20 +338,20 @@ export default function SecretsPage() {
   const daySignal = getDaySignal();
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <Link href="/" className="text-blue-400 hover:text-blue-300 text-sm mb-2 inline-block">
-          ← Back to Scanner
-        </Link>
-        <div className="flex items-center gap-3">
-          <span className="text-4xl">🔮</span>
-          <div>
-            <h1 className="text-3xl font-bold">Market Secrets</h1>
-            <p className="text-gray-400">Hidden patterns & correlations that actually work</p>
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      <Navigation />
+
+      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3">
+            <span className="text-4xl">🔮</span>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Pattern Library</h1>
+              <p className="text-gray-400">Hidden patterns & correlations backed by 2 years of data</p>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Live Indicators */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -677,11 +678,13 @@ export default function SecretsPage() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-10 text-center text-gray-500 text-sm">
-        <p>Analysis based on 2 years of Nifty 100 data (98 stocks, ~497 trading days each, 48,000+ data points)</p>
-        <p className="mt-1">These patterns are for educational purposes only. Not financial advice.</p>
-      </div>
+        {/* Data Source Note */}
+        <div className="mt-10 text-center text-gray-500 text-sm">
+          <p>Analysis based on 2 years of Nifty 100 data (98 stocks, ~497 trading days each, 48,000+ data points)</p>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 
 interface StockRecommendation {
   symbol: string;
@@ -339,43 +340,43 @@ export default function MonthAnalysisPage() {
   const positiveReturnStocks = data?.allRecommendations.filter(s => s.expectedReturn > 0 && s.winRate >= 50) || [];
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700 p-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div>
-            <Link href="/" className="text-gray-400 hover:text-white text-sm">
-              ← Back to Scanner
-            </Link>
-            <h1 className="text-2xl font-bold text-emerald-400 mt-1">
-              Monthly Seasonal Analysis
-            </h1>
-            <p className="text-gray-400 text-sm">
-              100% data-driven • 2-year historical patterns • No assumptions
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white"
-            >
-              {MONTHS.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => fetchAnalysis(true)}
-              disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-4 py-2 rounded font-medium"
-            >
-              {loading ? 'Analyzing...' : 'Refresh Data'}
-            </button>
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      <Navigation />
+
+      <main className="flex-1">
+        {/* Page Header */}
+        <div className="bg-gray-900 border-b border-gray-800 py-6">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Seasonal Analysis</h1>
+                <p className="text-gray-400 text-sm">
+                  100% data-driven • 2-year historical patterns • No assumptions
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                  className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                >
+                  {MONTHS.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => fetchAnalysis(true)}
+                  disabled={loading}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  {loading ? 'Analyzing...' : 'Refresh'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto p-4">
+        <div className="max-w-7xl mx-auto p-4">
         {/* Loading State */}
         {loading && !data && (
           <div className="text-center py-20">
@@ -630,13 +631,9 @@ export default function MonthAnalysisPage() {
         )}
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 border-t border-gray-700 p-4 mt-8">
-        <div className="max-w-7xl mx-auto text-center text-gray-500 text-sm">
-          <p>Analysis based on ~2 years of historical data from Yahoo Finance.</p>
-          <p className="mt-1">Past performance does not guarantee future results. For educational purposes only.</p>
-        </div>
-      </footer>
-    </main>
+      </main>
+
+      <Footer />
+    </div>
   );
 }

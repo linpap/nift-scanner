@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
+import Navigation from '@/components/Navigation';
+import Footer from '@/components/Footer';
 
 // Dynamic imports for chart components to avoid SSR issues
 const StockChart = dynamic(() => import('@/components/StockChart'), { ssr: false });
@@ -294,48 +295,31 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-4 md:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h1 className="text-3xl font-bold text-emerald-400">NIFT Scanner</h1>
-            <p className="text-gray-400">NSE F&O Stock Scanner for Swing Trading</p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href="/month-analysis"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              <span>📅</span> Month Analysis
-            </Link>
-            <Link
-              href="/direct-plays"
-              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              <span>📊</span> Direct Plays
-            </Link>
-            <Link
-              href="/secrets"
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            >
-              <span>🔮</span> Secrets
-            </Link>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 mt-2 text-sm">
-          <span className={`px-2 py-1 rounded ${isMarketOpen() ? 'bg-emerald-900 text-emerald-400' : 'bg-red-900 text-red-400'}`}>
-            Market {isMarketOpen() ? 'Open' : 'Closed'}
-          </span>
-          {lastScanTime && (
-            <span className="text-gray-500">
-              Last scan: {formatTime(lastScanTime)}
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      <Navigation />
 
-      {/* Main Grid - Scanner and News */}
+      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+        {/* Page Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Stock Scanner</h1>
+              <p className="text-gray-400 text-sm">Real-time technical analysis for NSE F&O stocks</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isMarketOpen() ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                Market {isMarketOpen() ? 'Open' : 'Closed'}
+              </span>
+              {lastScanTime && (
+                <span className="text-gray-500 text-sm">
+                  Last scan: {formatTime(lastScanTime)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Grid - Scanner and News */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scanner Section - Takes 2 columns */}
         <div className="lg:col-span-2">
@@ -677,10 +661,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="mt-12 text-center text-gray-600 text-sm">
-        <p>For paper trading only. Not financial advice.</p>
-      </footer>
+      </main>
+
+      <Footer />
 
       {/* Stock Chart Modal */}
       {selectedStock && (
@@ -689,6 +672,6 @@ export default function Home() {
           onClose={() => setSelectedStock(null)}
         />
       )}
-    </main>
+    </div>
   );
 }
