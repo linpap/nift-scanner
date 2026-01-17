@@ -44,174 +44,206 @@ const OPERATORS = [
 ];
 
 const EXAMPLE_QUERIES = [
-  'RSI below 30',
+  'RSI below 30 and volume above 1.5',
   'RSI between 30 and 70',
-  'Price above 200 SMA',
+  'Price above 200 SMA and change above 2%',
   'Volume ratio greater than 2',
-  'Change percent above 3%',
-  'EMA 9 crosses above EMA 21',
   'RSI oversold with high volume',
+  'EMA 9 crosses above EMA 21',
+  'Change percent above 3% and RSI below 70',
 ];
 
-// Simple NLP parser for natural language queries
+// Enhanced NLP parser for natural language queries - handles compound queries with AND
 function parseNaturalLanguage(query: string): FilterCondition[] {
   const conditions: FilterCondition[] = [];
   const lowerQuery = query.toLowerCase();
 
-  // RSI patterns
-  if (lowerQuery.includes('rsi')) {
-    if (lowerQuery.includes('below') || lowerQuery.includes('under') || lowerQuery.includes('less than')) {
-      const match = lowerQuery.match(/(\d+)/);
-      if (match) {
-        conditions.push({
-          id: `rsi_${Date.now()}`,
-          indicator: 'rsi',
-          operator: 'lt',
-          value: match[1],
-        });
-      }
-    } else if (lowerQuery.includes('above') || lowerQuery.includes('over') || lowerQuery.includes('greater than')) {
-      const match = lowerQuery.match(/(\d+)/);
-      if (match) {
-        conditions.push({
-          id: `rsi_${Date.now()}`,
-          indicator: 'rsi',
-          operator: 'gt',
-          value: match[1],
-        });
-      }
-    } else if (lowerQuery.includes('between')) {
-      const matches = lowerQuery.match(/(\d+)\s*(?:and|to|-)\s*(\d+)/);
-      if (matches) {
-        conditions.push({
-          id: `rsi_${Date.now()}`,
-          indicator: 'rsi',
-          operator: 'between',
-          value: matches[1],
-          value2: matches[2],
-        });
-      }
-    } else if (lowerQuery.includes('oversold')) {
-      conditions.push({
-        id: `rsi_${Date.now()}`,
-        indicator: 'rsi',
-        operator: 'lt',
-        value: '30',
-      });
-    } else if (lowerQuery.includes('overbought')) {
-      conditions.push({
-        id: `rsi_${Date.now()}`,
-        indicator: 'rsi',
-        operator: 'gt',
-        value: '70',
-      });
-    }
-  }
+  // Split by "and", "with", "&", "," to handle multiple conditions
+  const parts = lowerQuery.split(/\s+(?:and|with|&)\s+|,\s*/);
 
-  // Volume patterns
-  if (lowerQuery.includes('volume') || lowerQuery.includes('vol')) {
-    if (lowerQuery.includes('high') || lowerQuery.includes('spike')) {
-      conditions.push({
-        id: `vol_${Date.now()}`,
-        indicator: 'volume_ratio',
-        operator: 'gt',
-        value: '1.5',
-      });
-    } else {
-      const match = lowerQuery.match(/(\d+(?:\.\d+)?)/);
-      if (match) {
-        conditions.push({
-          id: `vol_${Date.now()}`,
-          indicator: 'volume_ratio',
-          operator: 'gt',
-          value: match[1],
-        });
-      }
-    }
-  }
+  for (const part of parts) {
+    const trimmedPart = part.trim();
+    if (!trimmedPart) continue;
 
-  // Price patterns
-  if (lowerQuery.includes('price')) {
-    if (lowerQuery.includes('above') && lowerQuery.includes('200')) {
-      conditions.push({
-        id: `price_${Date.now()}`,
-        indicator: 'price',
-        operator: 'crosses_above',
-        value: 'sma_200',
-      });
-    } else if (lowerQuery.includes('above') && lowerQuery.includes('50')) {
-      conditions.push({
-        id: `price_${Date.now()}`,
-        indicator: 'price',
-        operator: 'crosses_above',
-        value: 'sma_50',
-      });
-    } else {
-      const match = lowerQuery.match(/(\d+)/);
-      if (match) {
-        if (lowerQuery.includes('above') || lowerQuery.includes('greater')) {
+    // Generate unique ID for each condition
+    const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // RSI patterns
+    if (trimmedPart.includes('rsi')) {
+      if (trimmedPart.includes('below') || trimmedPart.includes('under') || trimmedPart.includes('less than') || trimmedPart.includes('<')) {
+        const match = trimmedPart.match(/(\d+)/);
+        if (match) {
           conditions.push({
-            id: `price_${Date.now()}`,
-            indicator: 'price',
-            operator: 'gt',
-            value: match[1],
-          });
-        } else if (lowerQuery.includes('below') || lowerQuery.includes('less')) {
-          conditions.push({
-            id: `price_${Date.now()}`,
-            indicator: 'price',
+            id: `rsi_${uniqueId}`,
+            indicator: 'rsi',
             operator: 'lt',
             value: match[1],
           });
         }
-      }
-    }
-  }
-
-  // Change percent patterns
-  if (lowerQuery.includes('change') || lowerQuery.includes('%') || lowerQuery.includes('percent')) {
-    const match = lowerQuery.match(/(\d+(?:\.\d+)?)\s*%?/);
-    if (match) {
-      if (lowerQuery.includes('above') || lowerQuery.includes('greater') || lowerQuery.includes('up')) {
+      } else if (trimmedPart.includes('above') || trimmedPart.includes('over') || trimmedPart.includes('greater than') || trimmedPart.includes('>')) {
+        const match = trimmedPart.match(/(\d+)/);
+        if (match) {
+          conditions.push({
+            id: `rsi_${uniqueId}`,
+            indicator: 'rsi',
+            operator: 'gt',
+            value: match[1],
+          });
+        }
+      } else if (trimmedPart.includes('between')) {
+        const matches = trimmedPart.match(/(\d+)\s*(?:and|to|-)\s*(\d+)/);
+        if (matches) {
+          conditions.push({
+            id: `rsi_${uniqueId}`,
+            indicator: 'rsi',
+            operator: 'between',
+            value: matches[1],
+            value2: matches[2],
+          });
+        }
+      } else if (trimmedPart.includes('oversold')) {
         conditions.push({
-          id: `change_${Date.now()}`,
-          indicator: 'change_percent',
-          operator: 'gt',
-          value: match[1],
-        });
-      } else if (lowerQuery.includes('below') || lowerQuery.includes('less') || lowerQuery.includes('down')) {
-        conditions.push({
-          id: `change_${Date.now()}`,
-          indicator: 'change_percent',
+          id: `rsi_${uniqueId}`,
+          indicator: 'rsi',
           operator: 'lt',
-          value: `-${match[1]}`,
+          value: '30',
+        });
+      } else if (trimmedPart.includes('overbought')) {
+        conditions.push({
+          id: `rsi_${uniqueId}`,
+          indicator: 'rsi',
+          operator: 'gt',
+          value: '70',
         });
       }
+      continue;
     }
-  }
 
-  // EMA crossover patterns
-  if (lowerQuery.includes('ema') && lowerQuery.includes('cross')) {
-    if (lowerQuery.includes('9') && lowerQuery.includes('21')) {
-      if (lowerQuery.includes('above')) {
+    // Volume patterns
+    if (trimmedPart.includes('volume') || trimmedPart.includes('vol')) {
+      if (trimmedPart.includes('high') || trimmedPart.includes('spike')) {
         conditions.push({
-          id: `ema_${Date.now()}`,
-          indicator: 'ema_9',
-          operator: 'crosses_above',
-          value: 'ema_21',
+          id: `vol_${uniqueId}`,
+          indicator: 'volume_ratio',
+          operator: 'gt',
+          value: '1.5',
         });
-      } else if (lowerQuery.includes('below')) {
+      } else {
+        const match = trimmedPart.match(/(\d+(?:\.\d+)?)/);
+        if (match) {
+          const op = (trimmedPart.includes('below') || trimmedPart.includes('less') || trimmedPart.includes('<')) ? 'lt' : 'gt';
+          conditions.push({
+            id: `vol_${uniqueId}`,
+            indicator: 'volume_ratio',
+            operator: op,
+            value: match[1],
+          });
+        }
+      }
+      continue;
+    }
+
+    // Price patterns
+    if (trimmedPart.includes('price')) {
+      if (trimmedPart.includes('above') && trimmedPart.includes('200')) {
         conditions.push({
-          id: `ema_${Date.now()}`,
+          id: `price_${uniqueId}`,
+          indicator: 'price',
+          operator: 'crosses_above',
+          value: 'sma_200',
+        });
+      } else if (trimmedPart.includes('above') && trimmedPart.includes('50')) {
+        conditions.push({
+          id: `price_${uniqueId}`,
+          indicator: 'price',
+          operator: 'crosses_above',
+          value: 'sma_50',
+        });
+      } else {
+        const match = trimmedPart.match(/(\d+)/);
+        if (match) {
+          const op = (trimmedPart.includes('above') || trimmedPart.includes('greater') || trimmedPart.includes('>')) ? 'gt' : 'lt';
+          conditions.push({
+            id: `price_${uniqueId}`,
+            indicator: 'price',
+            operator: op,
+            value: match[1],
+          });
+        }
+      }
+      continue;
+    }
+
+    // Change percent patterns
+    if (trimmedPart.includes('change') || trimmedPart.includes('percent') || (trimmedPart.includes('%') && trimmedPart.match(/\d/))) {
+      const match = trimmedPart.match(/(\d+(?:\.\d+)?)\s*%?/);
+      if (match) {
+        let op = 'gt';
+        let value = match[1];
+        if (trimmedPart.includes('below') || trimmedPart.includes('less') || trimmedPart.includes('down') || trimmedPart.includes('<') || trimmedPart.includes('negative')) {
+          op = 'lt';
+          if (!trimmedPart.includes('-')) {
+            value = `-${value}`;
+          }
+        }
+        conditions.push({
+          id: `change_${uniqueId}`,
+          indicator: 'change_percent',
+          operator: op,
+          value: value,
+        });
+      }
+      continue;
+    }
+
+    // EMA crossover patterns
+    if (trimmedPart.includes('ema') && trimmedPart.includes('cross')) {
+      if (trimmedPart.includes('9') && trimmedPart.includes('21')) {
+        const op = trimmedPart.includes('below') ? 'crosses_below' : 'crosses_above';
+        conditions.push({
+          id: `ema_${uniqueId}`,
           indicator: 'ema_9',
-          operator: 'crosses_below',
+          operator: op,
           value: 'ema_21',
         });
       }
+      continue;
+    }
+
+    // SMA patterns
+    if (trimmedPart.includes('sma') || trimmedPart.includes('moving average')) {
+      if (trimmedPart.includes('50') && trimmedPart.includes('200')) {
+        const op = trimmedPart.includes('below') ? 'crosses_below' : 'crosses_above';
+        conditions.push({
+          id: `sma_${uniqueId}`,
+          indicator: 'sma_50',
+          operator: op,
+          value: 'sma_200',
+        });
+      }
+      continue;
     }
   }
 
   return conditions;
+}
+
+// Get human-readable description of a condition
+function getConditionDescription(cond: FilterCondition): string {
+  const indicator = INDICATORS.find(i => i.id === cond.indicator)?.name || cond.indicator.toUpperCase();
+  const operator = OPERATORS.find(o => o.id === cond.operator)?.name || cond.operator;
+
+  if (cond.operator === 'between') {
+    return `${indicator} ${operator} ${cond.value} and ${cond.value2}`;
+  }
+
+  // Handle indicator vs indicator comparisons
+  if (cond.value.includes('_')) {
+    const valueIndicator = INDICATORS.find(i => i.id === cond.value)?.name || cond.value.toUpperCase();
+    return `${indicator} ${operator} ${valueIndicator}`;
+  }
+
+  return `${indicator} ${operator} ${cond.value}`;
 }
 
 export default function CustomFilterPage() {
@@ -220,12 +252,20 @@ export default function CustomFilterPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ScanResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [parseMessage, setParseMessage] = useState<string | null>(null);
 
   const handleNlQuery = () => {
+    if (!nlQuery.trim()) return;
+
     const parsed = parseNaturalLanguage(nlQuery);
     if (parsed.length > 0) {
       setConditions(prev => [...prev, ...parsed]);
+      setParseMessage(`Added ${parsed.length} condition${parsed.length > 1 ? 's' : ''}`);
       setNlQuery('');
+      setTimeout(() => setParseMessage(null), 2000);
+    } else {
+      setParseMessage('Could not parse query. Try examples below or add manually.');
+      setTimeout(() => setParseMessage(null), 3000);
     }
   };
 
@@ -236,7 +276,7 @@ export default function CustomFilterPage() {
         id: `cond_${Date.now()}`,
         indicator: 'rsi',
         operator: 'lt',
-        value: '',
+        value: '30',
       },
     ]);
   };
@@ -249,6 +289,11 @@ export default function CustomFilterPage() {
 
   const removeCondition = (id: string) => {
     setConditions(prev => prev.filter(c => c.id !== id));
+  };
+
+  const clearAllConditions = () => {
+    setConditions([]);
+    setResults([]);
   };
 
   const runScan = async () => {
@@ -274,6 +319,9 @@ export default function CustomFilterPage() {
 
       if (data.success) {
         setResults(data.results || []);
+        if (data.results?.length === 0) {
+          setError(`No stocks matched all ${conditions.length} conditions. Try relaxing some filters.`);
+        }
       } else {
         setError(data.error || 'Scan failed');
       }
@@ -289,7 +337,7 @@ export default function CustomFilterPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white mb-2">Custom Filter Builder</h1>
         <p className="text-gray-400">
-          Create custom stock filters using natural language or manual conditions
+          Create custom stock filters using natural language or manual conditions. All conditions use AND logic.
         </p>
       </div>
 
@@ -304,7 +352,7 @@ export default function CustomFilterPage() {
             value={nlQuery}
             onChange={(e) => setNlQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleNlQuery()}
-            placeholder='Try: "RSI below 30" or "Volume ratio greater than 2"'
+            placeholder='Try: "RSI below 30 and volume above 1.5" or "Change above 2% and RSI below 70"'
             className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
           />
           <button
@@ -312,9 +360,16 @@ export default function CustomFilterPage() {
             disabled={!nlQuery.trim()}
             className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Parse
+            + Add
           </button>
         </div>
+
+        {/* Parse Message */}
+        {parseMessage && (
+          <div className={`text-sm mb-3 ${parseMessage.includes('Added') ? 'text-emerald-400' : 'text-yellow-400'}`}>
+            {parseMessage}
+          </div>
+        )}
 
         {/* Example Queries */}
         <div className="flex flex-wrap gap-2">
@@ -322,7 +377,9 @@ export default function CustomFilterPage() {
           {EXAMPLE_QUERIES.map((ex, i) => (
             <button
               key={i}
-              onClick={() => setNlQuery(ex)}
+              onClick={() => {
+                setNlQuery(ex);
+              }}
               className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-2 py-1 rounded transition"
             >
               {ex}
@@ -336,13 +393,28 @@ export default function CustomFilterPage() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
             <span>⚙️</span> Filter Conditions
+            {conditions.length > 0 && (
+              <span className="text-sm font-normal text-gray-400">
+                ({conditions.length} condition{conditions.length !== 1 ? 's' : ''} - ALL must match)
+              </span>
+            )}
           </h3>
-          <button
-            onClick={addCondition}
-            className="text-sm bg-gray-800 hover:bg-gray-700 text-emerald-400 px-3 py-1.5 rounded-lg transition"
-          >
-            + Add Condition
-          </button>
+          <div className="flex gap-2">
+            {conditions.length > 0 && (
+              <button
+                onClick={clearAllConditions}
+                className="text-sm bg-red-900/30 hover:bg-red-900/50 text-red-400 px-3 py-1.5 rounded-lg transition"
+              >
+                Clear All
+              </button>
+            )}
+            <button
+              onClick={addCondition}
+              className="text-sm bg-gray-800 hover:bg-gray-700 text-emerald-400 px-3 py-1.5 rounded-lg transition"
+            >
+              + Add Condition
+            </button>
+          </div>
         </div>
 
         {conditions.length === 0 ? (
@@ -401,10 +473,16 @@ export default function CustomFilterPage() {
                   </>
                 )}
 
+                {/* Condition Description */}
+                <span className="flex-1 text-xs text-gray-500 truncate">
+                  {getConditionDescription(cond)}
+                </span>
+
                 {/* Remove */}
                 <button
                   onClick={() => removeCondition(cond.id)}
                   className="text-red-400 hover:text-red-300 p-1"
+                  title="Remove condition"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -412,6 +490,13 @@ export default function CustomFilterPage() {
                 </button>
               </div>
             ))}
+
+            {/* AND indicator between conditions */}
+            {conditions.length > 1 && (
+              <div className="text-center text-xs text-gray-500 py-1">
+                ↑ All conditions above must match (AND logic) ↑
+              </div>
+            )}
           </div>
         )}
 
@@ -429,7 +514,7 @@ export default function CustomFilterPage() {
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
-                Scanning...
+                Scanning F&O stocks...
               </span>
             ) : (
               `Run Scan (${conditions.length} condition${conditions.length !== 1 ? 's' : ''})`
@@ -449,7 +534,7 @@ export default function CustomFilterPage() {
       {results.length > 0 && (
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
           <h3 className="text-lg font-semibold text-white mb-4">
-            Scan Results ({results.length} matches)
+            Scan Results ({results.length} stocks match all {conditions.length} conditions)
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -460,7 +545,7 @@ export default function CustomFilterPage() {
                   <th className="text-right py-2 px-2">Price</th>
                   <th className="text-right py-2 px-2">Change %</th>
                   <th className="text-right py-2 px-2">RSI</th>
-                  <th className="text-left py-2 px-2">Matched</th>
+                  <th className="text-left py-2 px-2">Matched Filters</th>
                 </tr>
               </thead>
               <tbody>
@@ -478,7 +563,7 @@ export default function CustomFilterPage() {
                     <td className="py-2 px-2">
                       <div className="flex gap-1 flex-wrap">
                         {stock.matchedConditions.map((c, i) => (
-                          <span key={i} className="text-xs bg-gray-800 text-gray-300 px-1.5 py-0.5 rounded">
+                          <span key={i} className="text-xs bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">
                             {c}
                           </span>
                         ))}
@@ -493,13 +578,19 @@ export default function CustomFilterPage() {
       )}
 
       {/* Empty State */}
-      {results.length === 0 && !loading && conditions.length > 0 && (
+      {results.length === 0 && !loading && conditions.length === 0 && (
         <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-8 text-center">
           <div className="text-4xl mb-4">🔍</div>
-          <h3 className="text-xl font-semibold text-white mb-2">No Results</h3>
-          <p className="text-gray-400">
-            No stocks matched your filter criteria. Try adjusting the conditions.
+          <h3 className="text-xl font-semibold text-white mb-2">Build Your Custom Filter</h3>
+          <p className="text-gray-400 max-w-md mx-auto mb-4">
+            Add multiple conditions to find stocks that match ALL your criteria.
+            Use natural language or the manual builder.
           </p>
+          <div className="text-xs text-gray-500 space-y-1">
+            <p>• Type &quot;RSI below 30 and volume above 2&quot; to add two conditions at once</p>
+            <p>• All conditions use AND logic - stocks must match every filter</p>
+            <p>• Scans 50 F&O stocks from NSE</p>
+          </div>
         </div>
       )}
     </div>
