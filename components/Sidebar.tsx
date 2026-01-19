@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: '📊',
     children: [
       { href: '/dashboard', label: 'Live Scanner' },
+      { href: '/dashboard/btst', label: '⭐ BTST Scanner' },
       { href: '/dashboard/custom-filter', label: 'Custom Filter' },
       { href: '/dashboard/backtest', label: 'Backtest' },
     ],

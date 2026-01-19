@@ -55,6 +55,8 @@ interface NewsResponse {
 }
 
 const SCANNERS = [
+  // BTST Scanner (Run at 3PM)
+  { id: 'btst', name: '⭐ BTST Scanner', description: 'BTST: Run at 3PM, sell next day. Best: SHRIRAMFIN, ADANIPOWER, CANBK' },
   // Intraday Scanners (for 9:30 AM)
   { id: 'gap_up', name: 'Gap-Up Momentum', description: 'INTRADAY: 1-5% gap up + volume spike' },
   { id: 'gap_down_reversal', name: 'Gap-Down Reversal', description: 'INTRADAY: Gap down recovering' },
@@ -353,6 +355,7 @@ export default function Home() {
                   <option value={30}>Top 30 F&O</option>
                   <option value={50}>Top 50 F&O</option>
                   <option value={100}>Top 100 F&O</option>
+                  <option value={200}>Top 200 F&O</option>
                 </select>
               </div>
 

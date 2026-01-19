@@ -701,10 +701,89 @@ export function macdBearishScanner(ta: TechnicalAnalysis): ScanResult | null {
 }
 
 // ============================================
+// SCANNER 11: BTST (Buy Today Sell Tomorrow)
+// Based on Chartink criteria - daily breakout
+// BEST TIME TO RUN: 3:00 PM - 3:25 PM IST (before market close)
+// ============================================
+
+export function btstScanner(ta: TechnicalAnalysis): ScanResult | null {
+  const reasons: string[] = [];
+  let score = 0;
+
+  // Condition 1: Close > EMA 20 (strong short-term trend)
+  if (ta.close <= ta.ema20) {
+    return null;
+  }
+  reasons.push('Close > EMA20');
+  score += 2;
+
+  // Condition 2: Close > Previous Day High (breakout)
+  // Using previousClose as proxy since we don't have prevHigh
+  const changePercent = ((ta.close - ta.previousClose) / ta.previousClose) * 100;
+  if (changePercent < 0.5) {
+    return null;
+  }
+  reasons.push(`Breakout +${changePercent.toFixed(1)}%`);
+  score += Math.round(changePercent);
+
+  // Condition 3: RSI(14) > 55 (momentum)
+  if (ta.rsi14 <= 55) {
+    return null;
+  }
+  reasons.push(`RSI ${ta.rsi14.toFixed(0)}`);
+  score += 1;
+
+  // Condition 4: RSI < 75 (not overbought)
+  if (ta.rsi14 >= 75) {
+    return null;
+  }
+  score += 1;
+
+  // Condition 5: Volume > 1.5x Average (volume spike)
+  if (ta.volumeRatio < 1.5) {
+    return null;
+  }
+  reasons.push(`Vol ${ta.volumeRatio.toFixed(1)}x avg`);
+  score += Math.round(ta.volumeRatio);
+
+  // Condition 6: Close > SMA 50 (medium-term trend)
+  if (ta.close <= ta.sma50) {
+    return null;
+  }
+  reasons.push('Above SMA50');
+  score += 2;
+
+  // Condition 7: Bullish candle (Close > Open)
+  if (ta.close <= ta.open) {
+    return null;
+  }
+  reasons.push('Bullish candle');
+  score += 1;
+
+  // Condition 8: Price > 100 (liquidity filter)
+  if (ta.close < 100) {
+    return null;
+  }
+
+  return {
+    symbol: ta.symbol,
+    close: ta.close,
+    change: ta.close - ta.previousClose,
+    changePercent,
+    volume: ta.volume,
+    avgVolume: ta.avgVolume20,
+    volumeRatio: ta.volumeRatio,
+    rsi: ta.rsi14,
+    reason: reasons,
+    score,
+  };
+}
+
+// ============================================
 // Master Scanner - Run all scanners
 // ============================================
 
-export type ScannerType = 'range_expansion' | 'range_expansion_v2' | 'ema_crossover' | 'breakout' | 'ema_8_21' | 'gap_up' | 'gap_down_reversal' | 'intraday_momentum' | 'macd_bullish' | 'macd_bearish' | 'all';
+export type ScannerType = 'range_expansion' | 'range_expansion_v2' | 'ema_crossover' | 'breakout' | 'ema_8_21' | 'gap_up' | 'gap_down_reversal' | 'intraday_momentum' | 'macd_bullish' | 'macd_bearish' | 'btst' | 'all';
 
 export interface ScannerResults {
   scanner: string;
@@ -761,6 +840,10 @@ export function runScanner(
     case 'macd_bearish':
       scannerFn = macdBearishScanner;
       scannerName = 'MACD Bearish Crossover';
+      break;
+    case 'btst':
+      scannerFn = btstScanner;
+      scannerName = 'BTST Scanner (3PM)';
       break;
     default:
       scannerFn = rangeExpansionScanner;
