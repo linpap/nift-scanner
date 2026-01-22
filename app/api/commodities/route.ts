@@ -22,7 +22,7 @@ const COMMODITY_SYMBOLS: Record<string, { symbol: string; name: string; currency
 
   // Precious Metals
   gold: { symbol: 'GC=F', name: 'Gold', currency: 'USD' },
-  silver: { symbol: 'SI=F', name: 'Silver', currency: 'USD' },
+  silver: { symbol: 'SLV', name: 'Silver (SLV ETF)', currency: 'USD' },
 
   // Base Metals (LME proxies via futures)
   copper: { symbol: 'HG=F', name: 'Copper', currency: 'USD' },
