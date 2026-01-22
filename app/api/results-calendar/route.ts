@@ -11,6 +11,44 @@ interface NSEEvent {
   date: string;
 }
 
+// Recent results that NSE doesn't show (already announced)
+const RECENT_RESULTS: NSEEvent[] = [
+  // Jan 20, 2026
+  { symbol: 'RELIANCE', company: 'Reliance Industries Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '20-Jan-2026' },
+  { symbol: 'HDFCBANK', company: 'HDFC Bank Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '20-Jan-2026' },
+  { symbol: 'ICICIBANK', company: 'ICICI Bank Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '20-Jan-2026' },
+  { symbol: 'AXISBANK', company: 'Axis Bank Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '20-Jan-2026' },
+
+  // Jan 21, 2026
+  { symbol: 'TCS', company: 'Tata Consultancy Services Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '21-Jan-2026' },
+  { symbol: 'INFY', company: 'Infosys Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '21-Jan-2026' },
+  { symbol: 'WIPRO', company: 'Wipro Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '21-Jan-2026' },
+  { symbol: 'HCLTECH', company: 'HCL Technologies Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '21-Jan-2026' },
+  { symbol: 'LTIM', company: 'LTIMindtree Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '21-Jan-2026' },
+
+  // Jan 22, 2026
+  { symbol: 'INDIGO', company: 'InterGlobe Aviation Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'COFORGE', company: 'Coforge Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'MPHASIS', company: 'Mphasis Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'ADANIENT', company: 'Adani Enterprises Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'DLF', company: 'DLF Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'INDIANB', company: 'Indian Bank', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'ADANIPORTS', company: 'Adani Ports and SEZ Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'ADANIT', company: 'Adani Transmission Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'ATGL', company: 'Adani Gas Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+  { symbol: 'APLAPOLLO', company: 'APL Apollo Tubes Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '22-Jan-2026' },
+
+  // Jan 23, 2026
+  { symbol: 'BAJFINANCE', company: 'Bajaj Finance Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '23-Jan-2026' },
+  { symbol: 'BAJAJFINSV', company: 'Bajaj Finserv Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '23-Jan-2026' },
+  { symbol: 'SBIN', company: 'State Bank of India', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '23-Jan-2026' },
+  { symbol: 'ULTRACEMCO', company: 'UltraTech Cement Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '23-Jan-2026' },
+  { symbol: 'TATASTEEL', company: 'Tata Steel Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '23-Jan-2026' },
+  { symbol: 'MARUTI', company: 'Maruti Suzuki India Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '23-Jan-2026' },
+  { symbol: 'JSWSTEEL', company: 'JSW Steel Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '23-Jan-2026' },
+  { symbol: 'NESTLEIND', company: 'Nestle India Limited', purpose: 'Financial Results', bm_desc: 'Q3 FY26 Results', date: '23-Jan-2026' },
+];
+
 interface StockData {
   symbol: string;
   company: string;
@@ -30,6 +68,8 @@ interface StockData {
   avgVolume: number | null;
   fiftyTwoWeekHigh: number | null;
   fiftyTwoWeekLow: number | null;
+  isResultAnnounced: boolean;
+  resultSentiment: 'good' | 'bad' | 'neutral' | null;
 }
 
 interface ResultsByDate {
@@ -81,26 +121,25 @@ async function fetchYahooQuote(symbol: string): Promise<{
   weekOpen: number;
 } | null> {
   try {
-    // Fetch 5-day data to calculate week change
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}.NS?interval=1d&range=7d`;
+    const nsSymbol = `${symbol}.NS`;
 
-    const response = await fetch(url, {
+    // Fetch chart data for price and week change
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(nsSymbol)}?interval=1d&range=7d`;
+    const chartResponse = await fetch(chartUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
       cache: 'no-store',
     });
 
-    if (!response.ok) return null;
+    if (!chartResponse.ok) return null;
 
-    const data = await response.json();
-    const result = data.chart?.result?.[0];
+    const chartData = await chartResponse.json();
+    const chartResult = chartData.chart?.result?.[0];
+    if (!chartResult) return null;
 
-    if (!result) return null;
-
-    const meta = result.meta;
-    const quote = result.indicators?.quote?.[0];
-
+    const meta = chartResult.meta;
+    const quote = chartResult.indicators?.quote?.[0];
     if (!meta || !quote) return null;
 
     const closes = quote.close?.filter((c: number | null) => c !== null) || [];
@@ -108,17 +147,48 @@ async function fetchYahooQuote(symbol: string): Promise<{
     const previousClose = closes.length >= 2 ? closes[closes.length - 2] : price;
     const weekOpen = closes[0] || price;
 
+    // Fetch fundamental data from spark endpoint
+    let marketCap = 0, peRatio = 0, eps = 0, volume = 0, avgVolume = 0;
+    let fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh || 0;
+    let fiftyTwoWeekLow = meta.fiftyTwoWeekLow || 0;
+
+    try {
+      const sparkUrl = `https://query1.finance.yahoo.com/v8/finance/spark?symbols=${encodeURIComponent(nsSymbol)}&range=1d&interval=1d&indicators=close&includeTimestamps=false&includePrePost=false&corsDomain=finance.yahoo.com`;
+      const sparkResponse = await fetch(sparkUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+        cache: 'no-store',
+      });
+
+      if (sparkResponse.ok) {
+        const sparkData = await sparkResponse.json();
+        const sparkResult = sparkData.spark?.result?.[0]?.response?.[0]?.meta;
+        if (sparkResult) {
+          marketCap = sparkResult.marketCap || 0;
+          volume = sparkResult.regularMarketVolume || meta.regularMarketVolume || 0;
+        }
+      }
+    } catch {
+      // Ignore spark errors, use chart data
+    }
+
+    // Calculate approximate P/E and EPS from available data
+    // Note: Yahoo chart API doesn't provide these, so we estimate or leave as 0
+    volume = volume || meta.regularMarketVolume || 0;
+    avgVolume = meta.averageDailyVolume10Day || meta.averageDailyVolume3Month || 0;
+
     return {
       price,
       change: price - previousClose,
       changePercent: previousClose ? ((price - previousClose) / previousClose) * 100 : 0,
-      marketCap: meta.marketCap || 0,
-      peRatio: meta.trailingPE || 0,
-      eps: meta.epsTrailingTwelveMonths || 0,
-      volume: meta.regularMarketVolume || 0,
-      avgVolume: meta.averageDailyVolume10Day || 0,
-      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh || 0,
-      fiftyTwoWeekLow: meta.fiftyTwoWeekLow || 0,
+      marketCap,
+      peRatio,
+      eps,
+      volume,
+      avgVolume,
+      fiftyTwoWeekHigh,
+      fiftyTwoWeekLow,
       weekOpen,
     };
   } catch (error) {
@@ -153,7 +223,10 @@ export async function GET() {
     // Fetch NSE calendar
     const nseEvents = await fetchNSECalendar();
 
-    if (nseEvents.length === 0) {
+    // Combine with recent results
+    const allEvents = [...RECENT_RESULTS, ...nseEvents];
+
+    if (allEvents.length === 0) {
       return NextResponse.json({
         success: true,
         timestamp: Date.now(),
@@ -164,7 +237,7 @@ export async function GET() {
     }
 
     // Get unique symbols
-    const symbols = [...new Set(nseEvents.map(e => e.symbol))];
+    const symbols = [...new Set(allEvents.map(e => e.symbol))];
 
     // Fetch stock data for all symbols in parallel (limit to 30 for performance)
     const limitedSymbols = symbols.slice(0, 50);
@@ -181,11 +254,25 @@ export async function GET() {
 
     // Group results by date and enrich with stock data
     const resultsByDate: ResultsByDate = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    for (const event of nseEvents) {
+    for (const event of allEvents) {
       const parsedDate = parseDate(event.date);
       const dateKey = formatDateKey(parsedDate);
       const quote = stockDataMap[event.symbol];
+
+      // Check if result is already announced (date is in the past)
+      const isResultAnnounced = parsedDate < today;
+
+      // Determine result sentiment based on stock movement after results
+      // If stock is up significantly after results = good, down = bad
+      let resultSentiment: 'good' | 'bad' | 'neutral' | null = null;
+      if (isResultAnnounced && quote?.changePercent !== undefined) {
+        if (quote.changePercent > 2) resultSentiment = 'good';
+        else if (quote.changePercent < -2) resultSentiment = 'bad';
+        else resultSentiment = 'neutral';
+      }
 
       const stockData: StockData = {
         symbol: event.symbol,
@@ -206,6 +293,8 @@ export async function GET() {
         avgVolume: quote?.avgVolume || null,
         fiftyTwoWeekHigh: quote?.fiftyTwoWeekHigh || null,
         fiftyTwoWeekLow: quote?.fiftyTwoWeekLow || null,
+        isResultAnnounced,
+        resultSentiment,
       };
 
       if (!resultsByDate[dateKey]) {

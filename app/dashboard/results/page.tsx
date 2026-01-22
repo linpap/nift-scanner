@@ -22,6 +22,8 @@ interface StockData {
   avgVolume: number | null;
   fiftyTwoWeekHigh: number | null;
   fiftyTwoWeekLow: number | null;
+  isResultAnnounced: boolean;
+  resultSentiment: 'good' | 'bad' | 'neutral' | null;
 }
 
 interface ResultsByDate {
@@ -376,12 +378,11 @@ export default function ResultsCalendarPage() {
               <thead>
                 <tr className="bg-gray-800 text-left">
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300">Company</th>
+                  <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-center">Result</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">Price (₹)</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">1D Change</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">1W Change</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">Market Cap</th>
-                  <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">P/E</th>
-                  <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">EPS (TTM)</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-center">Analysis</th>
                 </tr>
               </thead>
@@ -398,6 +399,24 @@ export default function ResultsCalendarPage() {
                         </StockLink>
                       </div>
                       <div className="text-xs text-gray-500 truncate max-w-[200px]">{stock.company}</div>
+                    </td>
+                    <td className="border border-gray-700 px-4 py-3 text-center">
+                      {stock.isResultAnnounced ? (
+                        <span className={`text-2xl ${
+                          stock.resultSentiment === 'good' ? 'text-green-400' :
+                          stock.resultSentiment === 'bad' ? 'text-red-400' :
+                          'text-yellow-400'
+                        }`} title={
+                          stock.resultSentiment === 'good' ? 'Good Results - Stock up >2%' :
+                          stock.resultSentiment === 'bad' ? 'Weak Results - Stock down >2%' :
+                          'Mixed Results'
+                        }>
+                          {stock.resultSentiment === 'good' ? '👍' :
+                           stock.resultSentiment === 'bad' ? '👎' : '➡️'}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 text-xs">Pending</span>
+                      )}
                     </td>
                     <td className="border border-gray-700 px-4 py-3 text-right font-medium">
                       {stock.price ? `₹${stock.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '-'}
@@ -418,12 +437,6 @@ export default function ResultsCalendarPage() {
                     </td>
                     <td className="border border-gray-700 px-4 py-3 text-right text-sm">
                       {formatMarketCap(stock.marketCap)}
-                    </td>
-                    <td className="border border-gray-700 px-4 py-3 text-right text-sm">
-                      {stock.peRatio ? stock.peRatio.toFixed(1) : '-'}
-                    </td>
-                    <td className="border border-gray-700 px-4 py-3 text-right text-sm">
-                      {stock.eps ? `₹${stock.eps.toFixed(2)}` : '-'}
                     </td>
                     <td className="border border-gray-700 px-4 py-3 text-center">
                       <button
