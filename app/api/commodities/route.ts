@@ -197,7 +197,9 @@ async function fetchYahooQuote(symbol: string): Promise<{
     if (!meta || !quote) return null;
 
     const price = meta.regularMarketPrice || quote.close?.[quote.close.length - 1] || 0;
-    const previousClose = meta.chartPreviousClose || meta.previousClose || quote.close?.[0] || price;
+    // Use quote.close[0] (yesterday's close from 2-day range) as primary source
+    // meta.chartPreviousClose is unreliable and often returns stale data
+    const previousClose = quote.close?.[0] || meta.previousClose || price;
     const change = price - previousClose;
     const changePercent = previousClose ? (change / previousClose) * 100 : 0;
 
