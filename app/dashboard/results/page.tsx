@@ -381,8 +381,9 @@ export default function ResultsCalendarPage() {
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-center">Result</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">Price (₹)</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">1D Change</th>
-                  <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">1W Change</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">Market Cap</th>
+                  <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">P/E</th>
+                  <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-right">EPS (₹)</th>
                   <th className="border border-gray-700 px-4 py-3 text-sm font-semibold text-gray-300 text-center">Analysis</th>
                 </tr>
               </thead>
@@ -428,15 +429,14 @@ export default function ResultsCalendarPage() {
                         </span>
                       ) : '-'}
                     </td>
-                    <td className="border border-gray-700 px-4 py-3 text-right">
-                      {stock.weekChangePercent !== null ? (
-                        <span className={stock.weekChangePercent >= 0 ? 'text-green-400' : 'text-red-400'}>
-                          {stock.weekChangePercent >= 0 ? '+' : ''}{stock.weekChangePercent.toFixed(2)}%
-                        </span>
-                      ) : '-'}
-                    </td>
                     <td className="border border-gray-700 px-4 py-3 text-right text-sm">
                       {formatMarketCap(stock.marketCap)}
+                    </td>
+                    <td className="border border-gray-700 px-4 py-3 text-right text-sm">
+                      {stock.peRatio ? stock.peRatio.toFixed(1) : '-'}
+                    </td>
+                    <td className="border border-gray-700 px-4 py-3 text-right text-sm">
+                      {stock.eps ? `₹${stock.eps.toFixed(2)}` : '-'}
                     </td>
                     <td className="border border-gray-700 px-4 py-3 text-center">
                       <button

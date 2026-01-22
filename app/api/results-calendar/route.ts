@@ -107,7 +107,96 @@ async function fetchNSECalendar(): Promise<NSEEvent[]> {
   }
 }
 
-async function fetchYahooQuote(symbol: string): Promise<{
+async function fetchStockData(symbol: string): Promise<{
+  price: number;
+  change: number;
+  changePercent: number;
+  marketCap: number;
+  peRatio: number;
+  eps: number;
+  volume: number;
+  avgVolume: number;
+  fiftyTwoWeekHigh: number;
+  fiftyTwoWeekLow: number;
+  weekOpen: number;
+} | null> {
+  try {
+    // Fetch from NSE API for price, P/E, and fundamentals
+    const nseUrl = `https://www.nseindia.com/api/quote-equity?symbol=${encodeURIComponent(symbol)}`;
+    const nseResponse = await fetch(nseUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.nseindia.com/',
+      },
+      cache: 'no-store',
+    });
+
+    if (!nseResponse.ok) {
+      // Fallback to Yahoo if NSE fails
+      return fetchYahooFallback(symbol);
+    }
+
+    const nseData = await nseResponse.json();
+    const priceInfo = nseData.priceInfo || {};
+    const metadata = nseData.metadata || {};
+    const securityInfo = nseData.securityInfo || {};
+
+    const price = priceInfo.lastPrice || 0;
+    const previousClose = priceInfo.previousClose || price;
+    const change = priceInfo.change || (price - previousClose);
+    const changePercent = priceInfo.pChange || (previousClose ? ((price - previousClose) / previousClose) * 100 : 0);
+    const peRatio = parseFloat(metadata.pdSymbolPe) || 0;
+    const volume = priceInfo.totalTradedVolume || 0;
+    const fiftyTwoWeekHigh = priceInfo.weekHighLow?.max || 0;
+    const fiftyTwoWeekLow = priceInfo.weekHighLow?.min || 0;
+
+    // Calculate EPS from price and P/E
+    const eps = peRatio > 0 ? price / peRatio : 0;
+
+    // Calculate market cap from issued shares and price
+    const issuedSize = securityInfo.issuedSize || 0;
+    const marketCap = issuedSize * price;
+
+    // Get week open from Yahoo for weekly change calculation
+    let weekOpen = price;
+    try {
+      const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=7d`;
+      const yahooResponse = await fetch(yahooUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        cache: 'no-store',
+      });
+      if (yahooResponse.ok) {
+        const yahooData = await yahooResponse.json();
+        const closes = yahooData.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter((c: number | null) => c !== null) || [];
+        if (closes.length > 0) weekOpen = closes[0];
+      }
+    } catch {
+      // Ignore Yahoo errors for week data
+    }
+
+    return {
+      price,
+      change,
+      changePercent,
+      marketCap,
+      peRatio,
+      eps,
+      volume,
+      avgVolume: 0,
+      fiftyTwoWeekHigh,
+      fiftyTwoWeekLow,
+      weekOpen,
+    };
+  } catch (error) {
+    console.error(`Error fetching ${symbol} from NSE:`, error);
+    return fetchYahooFallback(symbol);
+  }
+}
+
+// Fallback to Yahoo Finance if NSE fails
+async function fetchYahooFallback(symbol: string): Promise<{
   price: number;
   change: number;
   changePercent: number;
@@ -122,13 +211,9 @@ async function fetchYahooQuote(symbol: string): Promise<{
 } | null> {
   try {
     const nsSymbol = `${symbol}.NS`;
-
-    // Fetch chart data for price and week change
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(nsSymbol)}?interval=1d&range=7d`;
     const chartResponse = await fetch(chartUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
       cache: 'no-store',
     });
 
@@ -147,52 +232,21 @@ async function fetchYahooQuote(symbol: string): Promise<{
     const previousClose = closes.length >= 2 ? closes[closes.length - 2] : price;
     const weekOpen = closes[0] || price;
 
-    // Fetch fundamental data from spark endpoint
-    let marketCap = 0, peRatio = 0, eps = 0, volume = 0, avgVolume = 0;
-    let fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh || 0;
-    let fiftyTwoWeekLow = meta.fiftyTwoWeekLow || 0;
-
-    try {
-      const sparkUrl = `https://query1.finance.yahoo.com/v8/finance/spark?symbols=${encodeURIComponent(nsSymbol)}&range=1d&interval=1d&indicators=close&includeTimestamps=false&includePrePost=false&corsDomain=finance.yahoo.com`;
-      const sparkResponse = await fetch(sparkUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-        cache: 'no-store',
-      });
-
-      if (sparkResponse.ok) {
-        const sparkData = await sparkResponse.json();
-        const sparkResult = sparkData.spark?.result?.[0]?.response?.[0]?.meta;
-        if (sparkResult) {
-          marketCap = sparkResult.marketCap || 0;
-          volume = sparkResult.regularMarketVolume || meta.regularMarketVolume || 0;
-        }
-      }
-    } catch {
-      // Ignore spark errors, use chart data
-    }
-
-    // Calculate approximate P/E and EPS from available data
-    // Note: Yahoo chart API doesn't provide these, so we estimate or leave as 0
-    volume = volume || meta.regularMarketVolume || 0;
-    avgVolume = meta.averageDailyVolume10Day || meta.averageDailyVolume3Month || 0;
-
     return {
       price,
       change: price - previousClose,
       changePercent: previousClose ? ((price - previousClose) / previousClose) * 100 : 0,
-      marketCap,
-      peRatio,
-      eps,
-      volume,
-      avgVolume,
-      fiftyTwoWeekHigh,
-      fiftyTwoWeekLow,
+      marketCap: 0,
+      peRatio: 0,
+      eps: 0,
+      volume: meta.regularMarketVolume || 0,
+      avgVolume: meta.averageDailyVolume10Day || 0,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh || 0,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow || 0,
       weekOpen,
     };
   } catch (error) {
-    console.error(`Error fetching ${symbol}:`, error);
+    console.error(`Error fetching ${symbol} from Yahoo:`, error);
     return null;
   }
 }
@@ -242,7 +296,7 @@ export async function GET() {
     // Fetch stock data for all symbols in parallel (limit to 30 for performance)
     const limitedSymbols = symbols.slice(0, 50);
     const stockDataPromises = limitedSymbols.map(async (symbol) => {
-      const quote = await fetchYahooQuote(symbol);
+      const quote = await fetchStockData(symbol);
       return { symbol, quote };
     });
 
