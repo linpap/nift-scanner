@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/fno-strategy', label: 'F&O Strategy', icon: '🎯' },
   { href: '/dashboard/month-analysis', label: 'Seasonal', icon: '📅' },
   { href: '/dashboard/direct-plays', label: 'Commodities', icon: '🛢️' },
+  { href: '/dashboard/results', label: 'Results Calendar', icon: '📊' },
   { href: '/dashboard/secrets', label: 'Patterns', icon: '🔮' },
   { href: '/dashboard/docs', label: 'Guide', icon: '📖' },
 ];
