@@ -262,15 +262,16 @@ export async function GET() {
       const dateKey = formatDateKey(parsedDate);
       const quote = stockDataMap[event.symbol];
 
-      // Check if result is already announced (date is in the past)
-      const isResultAnnounced = parsedDate < today;
+      // Check if result is already announced (date is today or in the past)
+      const isResultAnnounced = parsedDate <= today;
 
       // Determine result sentiment based on stock movement after results
       // If stock is up significantly after results = good, down = bad
+      // Using 1% threshold for more meaningful signals
       let resultSentiment: 'good' | 'bad' | 'neutral' | null = null;
       if (isResultAnnounced && quote?.changePercent !== undefined) {
-        if (quote.changePercent > 2) resultSentiment = 'good';
-        else if (quote.changePercent < -2) resultSentiment = 'bad';
+        if (quote.changePercent > 1) resultSentiment = 'good';
+        else if (quote.changePercent < -1) resultSentiment = 'bad';
         else resultSentiment = 'neutral';
       }
 
